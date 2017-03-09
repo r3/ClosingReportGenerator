@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ClosingReport
@@ -131,7 +132,8 @@ namespace ClosingReport
                 }
                 catch (FormatException)
                 {
-                    return new int[] { -1 };
+                    ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to parse codes from '{codes}', using: {ReportRunner.sentinel}");
+                    return new int[] { ReportRunner.sentinel };
                 }
             }
         }

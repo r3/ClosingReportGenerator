@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Diagnostics;
 
 namespace ClosingReport
 {
@@ -147,6 +148,7 @@ namespace ClosingReport
                 TimeSpan ringDuration = stampToSpan(row[5]);
 
                 InboundCall call = new InboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId, ringDuration);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
             }
             catch (Exception e)
@@ -180,6 +182,7 @@ namespace ClosingReport
                 int.TryParse(record[4], out accountCode);
 
                 OutboundCall call = new OutboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
             }
             catch (Exception e)
@@ -207,6 +210,7 @@ namespace ClosingReport
 
                 TimeSpan callDuration = stampToSpan(record[2]);
                 AbandonedCall call = new AbandonedCall(firstRingTime, accountCode, callDuration);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
             }
             catch (Exception e)
@@ -252,16 +256,19 @@ namespace ClosingReport
         public void AddCall(InboundCall call)
         {
             inbound.Add(call, null);
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
 
         public void AddCall(OutboundCall call)
         {
             outbound.Add(call, null);
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
         }
 
         public void AddCall(AbandonedCall call)
         {
             abandon.Add(call, null);
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
     }
 
@@ -285,10 +292,13 @@ namespace ClosingReport
                     if (!accounts.Keys.Contains<int>(code))
                     {
                         accounts[code] = account;
+                        ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding account, '{account.Name}' with code, '{code}'");
                     }
                     else
                     {
-                        throw new ArgumentException($"Could not add {account.Name} to accounts with code, {code}. Account code already used by {accounts[code].Name}");
+                        string err = $"Could not add {account.Name} to accounts with code, {code}. Account code already used by {accounts[code].Name}";
+                        ReportRunner.log.TraceEvent(TraceEventType.Error, 1, err);
+                        throw new ArgumentException(err);
                     }
                 }
             }
@@ -312,11 +322,11 @@ namespace ClosingReport
             }
             catch (ArgumentException)
             {
-                // Call already exists in that account and call type
+                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Not adding duplicate call: {call}");
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                // Otherwise failed to add call
+                ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {call}, got error: {e.Message}");
             }
         }
     }

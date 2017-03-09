@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -28,8 +29,8 @@ namespace ClosingReport
 
     class ReportRunner
     {
-        public static TraceSource source = new TraceSource("ClosingReport");
-        public const int sentinel = -1;
+        public static TraceSource log = new TraceSource("ClosingReport");
+        public static int sentinel = Convert.ToInt32(ConfigurationManager.AppSettings["Sentinel"]);
 
         static void Main(string[] args)
         {
