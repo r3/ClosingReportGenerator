@@ -76,7 +76,7 @@ namespace ClosingReport
             this.adderMeth = adderMeth;
             this.csvPath = csvPath;
 
-            if (skipHeader == null)
+            if (!skipHeader.HasValue)
             {
                 this.skipHeader = (ConfigurationManager.AppSettings["SkipHeader"] == "true") ? true : false;
             }
