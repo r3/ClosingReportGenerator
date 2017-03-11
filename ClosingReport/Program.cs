@@ -7,9 +7,6 @@ using System.Linq;
 
 namespace ClosingReport
 {
-    public delegate void CallAdder<T>(int code, T call);
-    public delegate T CallBuilder<T>(string[] record);
-
     public class ParseException : Exception
     {
         public ParseException()
@@ -53,16 +50,26 @@ namespace ClosingReport
                 adderMeth: accounts.AddCall<AbandonedCall>,
                 csvPath: @"C:\abandons.csv"
             ).ProcessCalls();
+
+            foreach (var accountStats in accounts.Statistics())
+            {
+                log.TraceEvent(TraceEventType.Information, 0, $"\n\nAccount: {accountStats.AccountName}");
+                log.TraceEvent(TraceEventType.Information, 0, $"Inbound Average: {accountStats.InboundAverage}");
+                log.TraceEvent(TraceEventType.Information, 0, $"Abandoned Average: {accountStats.AbandonedAverage}");
+                log.TraceEvent(TraceEventType.Information, 0, $"Inbound Total: {accountStats.TotalInbound}");
+                log.TraceEvent(TraceEventType.Information, 0, $"Outbound Total: {accountStats.TotalOutbound}");
+                log.TraceEvent(TraceEventType.Information, 0, $"Abandoned Total: {accountStats.TotalAbandoned}");
+            }
         }
     }
 
     class CallProcessor<T> where T : Call
     {
-        private CallBuilder<T> builderMeth;
-        private CallAdder<T> adderMeth;
+        private Func<string[], T> builderMeth;
+        private Action<int, T> adderMeth;
         private string csvPath;
 
-        public CallProcessor(CallBuilder<T> builderMeth, CallAdder<T> adderMeth, string csvPath)
+        public CallProcessor(Func<string[], T> builderMeth, Action<int, T> adderMeth, string csvPath)
         {
             this.builderMeth = builderMeth;
             this.adderMeth = adderMeth;

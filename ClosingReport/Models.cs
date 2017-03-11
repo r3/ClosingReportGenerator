@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -7,6 +6,16 @@ using System.Diagnostics;
 
 namespace ClosingReport
 {
+    struct Stats
+    {
+        public string AccountName;
+        public TimeSpan InboundAverage;
+        public TimeSpan AbandonedAverage;
+        public int TotalInbound;
+        public int TotalOutbound;
+        public int TotalAbandoned;
+    }
+
     abstract class Call : IComparable
     {
         private DateTime firstRingTime;
@@ -139,10 +148,10 @@ namespace ClosingReport
                 string telephoneNumber = row[1];
                 TimeSpan callDuration = stampToSpan(row[2]);
 
-                int agentId = ClosingReport.ReportRunner.sentinel;
+                int agentId = ReportRunner.sentinel;
                 int.TryParse(row[3], out agentId);
 
-                int accountCode = ClosingReport.ReportRunner.sentinel;
+                int accountCode = ReportRunner.sentinel;
                 int.TryParse(row[4], out accountCode);
 
                 TimeSpan ringDuration = stampToSpan(row[5]);
@@ -175,10 +184,10 @@ namespace ClosingReport
                 string telephoneNumber = record[1];
                 TimeSpan callDuration = stampToSpan(record[2]);
 
-                int agentId = ClosingReport.ReportRunner.sentinel;
+                int agentId = ReportRunner.sentinel;
                 int.TryParse(record[3], out agentId);
 
-                int accountCode = ClosingReport.ReportRunner.sentinel;
+                int accountCode = ReportRunner.sentinel;
                 int.TryParse(record[4], out accountCode);
 
                 OutboundCall call = new OutboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId);
@@ -205,7 +214,7 @@ namespace ClosingReport
             {
                 DateTime firstRingTime = DateTime.Parse(record[0]);
 
-                int accountCode = ClosingReport.ReportRunner.sentinel;
+                int accountCode = ReportRunner.sentinel;
                 int.TryParse(record[1], out accountCode);
 
                 TimeSpan callDuration = stampToSpan(record[2]);
@@ -224,9 +233,9 @@ namespace ClosingReport
     {
         private string name;
         private int[] codes;
-        private SortedList inbound;
-        private SortedList outbound;
-        private SortedList abandon;
+        private List<InboundCall> inbound;
+        private List<OutboundCall> outbound;
+        private List<AbandonedCall> abandon;
 
         public string Name
         {
@@ -244,31 +253,93 @@ namespace ClosingReport
             }
         }
 
+        public int TotalInbound
+        {
+            get
+            {
+                return inbound.Count;
+            }
+        }
+
+        public int TotalOutbound
+        {
+            get
+            {
+                return outbound.Count;
+            }
+        }
+
+        public int TotalAbandoned
+        {
+            get
+            {
+                return abandon.Count;
+            }
+        }
+
         public Account(string name, int[] codes)
         {
             this.name = name;
             this.codes = codes;
-            this.inbound = new SortedList();
-            this.outbound = new SortedList();
-            this.abandon = new SortedList();
+            this.inbound = new List<InboundCall>();
+            this.outbound = new List<OutboundCall>();
+            this.abandon = new List<AbandonedCall>();
         }
 
         public void AddCall(InboundCall call)
         {
-            inbound.Add(call, null);
+            inbound.Add(call);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
 
         public void AddCall(OutboundCall call)
         {
-            outbound.Add(call, null);
+            outbound.Add(call);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
         }
 
         public void AddCall(AbandonedCall call)
         {
-            abandon.Add(call, null);
+            abandon.Add(call);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
+        }
+
+        private TimeSpan AverageTime(IEnumerable<TimeSpan> times)
+        {
+            int collectionCount = 0;
+            TimeSpan totalTime = new TimeSpan(0);
+            foreach (TimeSpan time in times)
+            {
+                totalTime += time;
+                collectionCount++;
+            }
+            
+            if (collectionCount == 0)
+            {
+                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to compute average, no TimeSpan objects in enumerable");
+                return new TimeSpan(0);
+            }
+            
+            int avgDays = totalTime.Days / collectionCount;
+            int avgHours = totalTime.Hours / collectionCount;
+            int avgMinutes = totalTime.Minutes / collectionCount;
+            int avgSeconds = totalTime.Seconds / collectionCount;
+            int avgMilliseconds = totalTime.Milliseconds / collectionCount;
+            
+            return new TimeSpan(days: avgDays, hours: avgHours, minutes: avgMinutes, seconds: avgSeconds);
+        }
+
+        public Stats Statistics()
+        {
+            return new Stats()
+            {
+                AccountName = Name,
+                InboundAverage = AverageTime(from call in inbound select call.RingDuration),
+                AbandonedAverage = AverageTime(from call in abandon select call.CallDuration),
+                TotalInbound = TotalInbound,
+                TotalOutbound = TotalOutbound,
+                TotalAbandoned = TotalAbandoned
+            };
         }
     }
 
@@ -328,6 +399,15 @@ namespace ClosingReport
             {
                 ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {call}, got error: {e.Message}");
             }
+        }
+
+        public IEnumerable<Stats> Statistics()
+        {
+            foreach (Account account in accounts.Values.Distinct<Account>())
+            {
+                yield return account.Statistics();
+            }
+            yield break;
         }
     }
 }
