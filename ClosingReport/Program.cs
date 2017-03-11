@@ -68,12 +68,23 @@ namespace ClosingReport
         private Func<string[], T> builderMeth;
         private Action<int, T> adderMeth;
         private string csvPath;
+        private bool skipHeader;
 
-        public CallProcessor(Func<string[], T> builderMeth, Action<int, T> adderMeth, string csvPath)
+        public CallProcessor(Func<string[], T> builderMeth, Action<int, T> adderMeth, string csvPath, bool? skipHeader=null)
         {
             this.builderMeth = builderMeth;
             this.adderMeth = adderMeth;
             this.csvPath = csvPath;
+
+            if (skipHeader == null)
+            {
+                this.skipHeader = (ConfigurationManager.AppSettings["SkipHeader"] == "true") ? true : false;
+            }
+            else
+            {
+                this.skipHeader = (bool)skipHeader;
+            }
+            
         }
 
         public void ProcessCalls()

@@ -33,5 +33,7 @@
   <appSettings>
     <!-- No account code should match a sentinel value, used where no account code exists -->
     <add key="Sentinel" value="-1"/>
+    <!-- Determine if a headers should be skipped by default, choose either 'true' or 'false' (case sensitive) -->
+    <add key="SkipHeader" value="true"/>
   </appSettings>
 </configuration>
