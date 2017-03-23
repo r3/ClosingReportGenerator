@@ -348,6 +348,46 @@ namespace ClosingReport
         private Dictionary<int, Account> accounts;
         private int sentinel;
 
+        public int InboundCount
+        {
+            get
+            {
+                return accounts.Values.Select(x => x.TotalInbound).Sum();
+            }
+        }
+
+        public int OutboundCount
+        {
+            get
+            {
+                return accounts.Values.Select(x => x.TotalOutbound).Sum();
+            }
+        }
+
+        public int AbandonedCount
+        {
+            get
+            {
+                return accounts.Values.Select(x => x.TotalAbandoned).Sum();
+            }
+        }
+
+        public int TotalCount
+        {
+            get
+            {
+                return InboundCount + AbandonedCount;
+            }
+        }
+
+        public float AbandonedRate
+        {
+            get
+            {
+                return (AbandonedCount != 0) ? TotalCount / AbandonedCount : 0;
+            }
+        }
+
         public Accounts(int sentinel)
         {
             this.sentinel = sentinel;
