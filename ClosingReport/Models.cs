@@ -16,7 +16,7 @@ namespace ClosingReport
         public int TotalAbandoned;
     }
 
-    abstract class Call : IComparable
+    abstract class Call
     {
         private DateTime firstRingTime;
         private int accountCode;
@@ -89,19 +89,6 @@ namespace ClosingReport
             set
             {
                 this.ringDuration = value;
-            }
-        }
-
-        public int CompareTo(Object other)
-        {
-            Call otherCall = other as Call;
-            if (otherCall != null)
-            {
-                return firstRingTime.CompareTo(otherCall.FirstRingTime); ;
-            }
-            else
-            {
-                throw new ArgumentException("Object is not a Call");
             }
         }
 
@@ -384,7 +371,7 @@ namespace ClosingReport
         {
             get
             {
-                return (AbandonedCount != 0) ? TotalCount / AbandonedCount : 0;
+                return (TotalCount != 0) ? AbandonedCount / TotalCount : 0;
             }
         }
 

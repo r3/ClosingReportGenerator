@@ -79,6 +79,11 @@ namespace ClosingReport
                     }
                 }
             );
+            string myDocsPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            using (StreamWriter writer = new StreamWriter(myDocsPath + @"\view.html"))
+            {
+                writer.Write(results);
+            }
         }
     }
 
