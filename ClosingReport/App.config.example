@@ -35,5 +35,10 @@
     <add key="Sentinel" value="-1"/>
     <!-- Determine if a headers should be skipped by default, choose either 'true' or 'false' (case sensitive) -->
     <add key="SkipHeader" value="true"/>
+    <!-- Increment in minutes for separating times, used when generating the line chart. Must a multiple of 5 (miniumum of 5) -->
+    <add key="TimeIncrement" value="15"/>
+    <!-- Operational hours. Only communications between these times will be checked. -->
+    <add key="OpeningTime" value="5:00 AM"/>
+    <add key="ClosingTime" value="9:00 PM"/>
   </appSettings>
 </configuration>
