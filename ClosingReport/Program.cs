@@ -4,8 +4,7 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using RazorEngine;
-using RazorEngine.Templating;
+
 
 namespace ClosingReport
 {
@@ -30,7 +29,6 @@ namespace ClosingReport
     {
         public static TraceSource log = new TraceSource("ClosingReport");
         public static int sentinel = Convert.ToInt32(ConfigurationManager.AppSettings["Sentinel"]);
-        private static string templatePath = "View.template";
 
         static void Main(string[] args)
         {
@@ -53,38 +51,9 @@ namespace ClosingReport
                 adderMeth: accounts.AddCall<AbandonedCall>,
                 csvPath: @"C:\abandons.csv"
             ).ProcessCalls();
-            
-            if (!File.Exists(templatePath))
-            {
-                throw new ArgumentException($"Could not open the template file at, '{templatePath}'");
-            }
-            string template;
-            using (StreamReader reader = new StreamReader(templatePath))
-            {
-                template = reader.ReadToEnd();
-            }
-            string results = Engine.Razor.RunCompile(
-                templateSource: template,
-                name: "ClosingReportKey",
-                modelType: null,
-                model: new
-                {
-                    Statistics = accounts.Statistics(),
-                    Totals = new
-                    {
-                        TotalReceived = accounts.TotalCount,
-                        Inbound = accounts.InboundCount,
-                        Outbound = accounts.OutboundCount,
-                        AbandonRate = accounts.AbandonedRate
-                    }
-                }
-            );
-            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string destination = Path.Combine(desktop, @"view.html");
-            using (StreamWriter writer = new StreamWriter(destination))
-            {
-                writer.Write(results);
-            }
+
+            HtmlView view = new HtmlView(accounts);
+            view.render();
         }
     }
 
