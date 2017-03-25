@@ -5,6 +5,102 @@ using System.Linq;
 
 namespace ClosingReport
 {
+    public class TimeManagement
+    {
+        private static int? increment = null;
+        private static TimeSpan openingTime;
+        private static TimeSpan closingTime;
+
+        public static int Increment
+        {
+            get
+            {
+                if (increment != null)
+                {
+                    return (int)increment;
+                }
+
+                string unparsed = ConfigurationManager.AppSettings["TimeIncrement"];
+                int parsed;
+
+                try
+                {
+                    parsed = Convert.ToInt32(unparsed);
+                }
+                catch (Exception e)
+                {
+                    throw new ArgumentException($"TimeIncrement of '{unparsed}' is not valid. Should be an integer. Got error: {e.Message}");
+                }
+
+                if (increment % 5 != 0 || increment < 5)
+                {
+                    throw new ArgumentException($"TimeIncrement is not a multiple of five, or is lower than five.");
+                }
+
+                increment = parsed;
+                return parsed;
+            }
+        }
+
+        public static TimeSpan OpeningTime
+        {
+            get
+            {
+                if (openingTime == null)
+                {
+                    openingTime = GetOperationTimes("OpeningTime");
+                }
+
+                return openingTime;
+            }
+        }
+
+        public static TimeSpan ClosingTime
+        {
+            get
+            {
+                if (closingTime == null)
+                {
+                    closingTime = GetOperationTimes("ClosingTime");
+                }
+
+                return closingTime;
+            }
+        }
+
+        private static TimeSpan GetOperationTimes(string name)
+        {
+            string unparsed;
+            try
+            {
+                unparsed = ConfigurationManager.AppSettings[name];
+            }
+            catch (Exception)
+            {
+                throw new ArgumentException($"Unable to read value with key, '{name}' from the configuration file");
+            }
+
+            try
+            {
+                return TimeSpan.Parse(unparsed);
+            }
+            catch (Exception e)
+            {
+                throw new ArgumentException($"Unable to convert '{unparsed}' to TimeSpan. Got error: {e.Message}");
+            }
+        }
+
+        public static TimeSpan NearestIncrement(DateTime time)
+        {
+            int minutesToNearestIncrement = time.Minute / Increment;
+            return new TimeSpan(
+                hours: time.Hour,
+                minutes: minutesToNearestIncrement,
+                seconds: 0
+            );
+        }
+    }
+
     public class AccountsConfiguration : ConfigurationSection
     {
         private static ConfigurationPropertyCollection properties;

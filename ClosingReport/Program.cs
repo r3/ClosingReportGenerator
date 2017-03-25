@@ -53,7 +53,7 @@ namespace ClosingReport
             ).ProcessCalls();
 
             HtmlView view = new HtmlView(accounts);
-            view.render();
+            view.SaveToFile();
         }
     }
 

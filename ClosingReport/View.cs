@@ -5,15 +5,15 @@ using OxyPlot;
 using OxyPlot.Series;
 using RazorEngine;
 using RazorEngine.Templating;
+using System.Configuration;
 
 namespace ClosingReport
 {
     class ChartView
     {
-        public PlotModel Model
+        private PlotModel Model
         {
-            get;
-            set;
+            get; set;
         }
 
         public ChartView(IEnumerable<IDataPointProvider> dataToPlot)
@@ -26,18 +26,25 @@ namespace ClosingReport
     {
         private static string templatePath = @"View.template";
 
-        private Accounts toPlot
+        private Accounts accounts
         {
             get;
             set;
         }
 
-        public HtmlView(Accounts accountsToPlot)
+        public string ResultString
         {
-            toPlot = accountsToPlot;
+            get;
+            private set;
         }
 
-        public void render()
+        public HtmlView(Accounts accounts)
+        {
+            this.accounts = accounts;
+            this.Render();
+        }
+
+        public void Render()
         {
             if (!File.Exists(templatePath))
             {
@@ -50,27 +57,31 @@ namespace ClosingReport
                 template = reader.ReadToEnd();
             }
 
-            string results = Engine.Razor.RunCompile(
+            ResultString = Engine.Razor.RunCompile(
                 templateSource: template,
                 name: "ClosingReportKey",
                 modelType: null,
                 model: new
                 {
-                    Statistics = toPlot.Statistics(),
+                    Statistics = accounts.Statistics(),
                     Totals = new
                     {
-                        TotalReceived = toPlot.TotalCount,
-                        Inbound = toPlot.InboundCount,
-                        Outbound = toPlot.OutboundCount,
-                        AbandonRate = toPlot.AbandonedRate
+                        TotalReceived = accounts.TotalCount,
+                        Inbound = accounts.InboundCount,
+                        Outbound = accounts.OutboundCount,
+                        AbandonRate = accounts.AbandonedRate
                     }
                 }
             );
+        }
+
+        public void SaveToFile()
+        {
             string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string destination = Path.Combine(desktop, @"view.html");
             using (StreamWriter writer = new StreamWriter(destination))
             {
-                writer.Write(results);
+                writer.Write(ResultString);
             }
         }
     }
