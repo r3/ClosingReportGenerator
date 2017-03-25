@@ -52,19 +52,19 @@ namespace ClosingReport
                 csvPath: @"C:\abandons.csv"
             ).ProcessCalls();
 
-            HtmlView view = new HtmlView(accounts);
-            view.SaveToFile();
+            //HtmlView view = new HtmlView(accounts);
+            //view.SaveToFile();
         }
     }
 
     class CallProcessor<T> where T : Call
     {
         private Func<string[], T> builderMeth;
-        private Action<int, T> adderMeth;
+        private Action<T> adderMeth;
         private string csvPath;
         private bool skipHeader;
 
-        public CallProcessor(Func<string[], T> builderMeth, Action<int, T> adderMeth, string csvPath, bool? skipHeader=null)
+        public CallProcessor(Func<string[], T> builderMeth, Action<T> adderMeth, string csvPath, bool? skipHeader=null)
         {
             this.builderMeth = builderMeth;
             this.adderMeth = adderMeth;
@@ -85,7 +85,7 @@ namespace ClosingReport
             foreach (string[] record in IterRecords())
             {
                 T call = builderMeth(record);
-                adderMeth(call.AccountCode, call);
+                adderMeth(call);
             }
         }
 

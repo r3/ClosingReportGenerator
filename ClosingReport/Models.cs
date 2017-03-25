@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Diagnostics;
+using System.Collections;
 
 namespace ClosingReport
 {
@@ -330,7 +331,7 @@ namespace ClosingReport
         }
     }
 
-    class Accounts
+    class Accounts : IEnumerable<Account>
     {
         private Dictionary<int, Account> accounts;
         private int sentinel;
@@ -402,12 +403,12 @@ namespace ClosingReport
             }
         }
 
-        public void AddCall<T>(int accountCode, T call) where T : Call
+        public void AddCall<T>(T call) where T : Call
         {
             Account account;
             try
             {
-                account = accounts[accountCode];
+                account = accounts[call.AccountCode];
             }
             catch (KeyNotFoundException)
             {
@@ -435,6 +436,16 @@ namespace ClosingReport
                 yield return account.Statistics();
             }
             yield break;
+        }
+
+        IEnumerator<Account> IEnumerable<Account>.GetEnumerator()
+        {
+            return accounts as IEnumerator<Account>;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return accounts as IEnumerator;
         }
     }
 }

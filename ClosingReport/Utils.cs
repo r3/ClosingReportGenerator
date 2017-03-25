@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
@@ -10,6 +11,8 @@ namespace ClosingReport
         private static int? increment = null;
         private static TimeSpan openingTime;
         private static TimeSpan closingTime;
+
+        private Dictionary<TimeSpan, int> count;
 
         public static int Increment
         {
@@ -98,6 +101,33 @@ namespace ClosingReport
                 minutes: minutesToNearestIncrement,
                 seconds: 0
             );
+        }
+
+        public TimeManagement()
+        {
+            TimeSpan index = OpeningTime;
+            TimeSpan incrementAsSpan = new TimeSpan(hours: 0, minutes: Increment, seconds: 0);
+
+            while (index < ClosingTime)
+            {
+                count[index] = 0;
+                index += incrementAsSpan;
+                ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"THING: Adding TimeSpan: {index}");
+            }
+        }
+
+        public void AddTimes(IEnumerable<DateTime> times)
+        {
+            foreach (var time in times)
+            {
+                TimeSpan rounded = NearestIncrement(time);
+
+                if (rounded < OpeningTime || rounded > ClosingTime)
+                {
+                    throw new ArgumentException($"Encountered time outside of opening ({OpeningTime}) and closing ({ClosingTime}) time: {time}");
+                }
+                count[rounded]++;
+            }
         }
     }
 

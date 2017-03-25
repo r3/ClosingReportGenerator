@@ -26,12 +26,6 @@ namespace ClosingReport
     {
         private static string templatePath = @"View.template";
 
-        private Accounts accounts
-        {
-            get;
-            set;
-        }
-
         public string ResultString
         {
             get;
@@ -40,11 +34,10 @@ namespace ClosingReport
 
         public HtmlView(Accounts accounts)
         {
-            this.accounts = accounts;
-            this.Render();
+            Render(accounts);
         }
 
-        public void Render()
+        private void Render(Accounts accounts)
         {
             if (!File.Exists(templatePath))
             {

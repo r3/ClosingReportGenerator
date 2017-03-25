@@ -33,7 +33,7 @@
   <appSettings>
     <!-- No account code should match a sentinel value, used where no account code exists -->
     <add key="Sentinel" value="-1"/>
-    <!-- Determine if a headers should be skipped by default, choose either 'true' or 'false' (case sensitive) -->
+    <!-- Determine if a headers should be skipped in csv files by default, choose either 'true' or 'false' (case sensitive) -->
     <add key="SkipHeader" value="true"/>
     <!-- Increment in minutes for separating times, used when generating the line chart. Must a multiple of 5 (miniumum of 5) -->
     <add key="TimeIncrement" value="15"/>
