@@ -8,6 +8,11 @@ namespace ClosingReport
 {
     public class TimeManagement
     {
+        public const int HOURS_IN_DAY = 24;
+        public const int MINUTES_IN_HOUR = 60;
+        public const int SECONDS_IN_MINUTE = 60;
+        public const int MILLISECONDS_IN_SECOND = 1000;
+
         private static int? increment = null;
         private static TimeSpan openingTime;
         private static TimeSpan closingTime;
@@ -103,11 +108,49 @@ namespace ClosingReport
             );
         }
 
+        public static int TimeDivRem(int days, int divisor, int conversionFactor, out int hourRemainder)
+        {
+            int remainder;
+            int quotient = Math.DivRem(days, divisor, out remainder);
+            hourRemainder = remainder * conversionFactor;
+            return quotient;
+        }
+
+        public static TimeSpan AverageTime(IEnumerable<TimeSpan> times)
+        {
+            int collectionCount = 0;
+            TimeSpan totalTime = new TimeSpan(0);
+            foreach (TimeSpan time in times)
+            {
+                totalTime += time;
+                collectionCount++;
+            }
+            
+            if (collectionCount == 0)
+            {
+                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to compute average, no TimeSpan objects in enumerable");
+                return new TimeSpan(0);
+            }
+
+            int hoursLeft;
+            int avgDays = TimeDivRem(totalTime.Days, collectionCount, HOURS_IN_DAY, out hoursLeft);
+            int minutesLeft;
+            int avgHours = TimeDivRem(totalTime.Hours + hoursLeft, collectionCount, MINUTES_IN_HOUR, out minutesLeft);
+            int secondsLeft;
+            int avgMinutes = TimeDivRem(totalTime.Minutes + minutesLeft, collectionCount, SECONDS_IN_MINUTE, out secondsLeft);
+            int millisecondsLeft;
+            int avgSeconds = TimeDivRem(totalTime.Seconds + secondsLeft, collectionCount, MILLISECONDS_IN_SECOND, out millisecondsLeft);
+            int avgMilliseconds = (totalTime.Milliseconds + millisecondsLeft) / collectionCount;
+            
+            return new TimeSpan(days: avgDays, hours: avgHours, minutes: avgMinutes, seconds: avgSeconds);
+        }
+
         public TimeManagement()
         {
             TimeSpan index = OpeningTime;
             TimeSpan incrementAsSpan = new TimeSpan(hours: 0, minutes: Increment, seconds: 0);
 
+            count = new Dictionary<TimeSpan, int>();
             while (index < ClosingTime)
             {
                 count[index] = 0;

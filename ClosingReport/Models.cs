@@ -145,6 +145,7 @@ namespace ClosingReport
                 TimeSpan ringDuration = stampToSpan(row[5]);
 
                 InboundCall call = new InboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId, ringDuration);
+                ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Parsed call: <<{call.RingDuration}>> {call}");
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
             }
@@ -265,6 +266,30 @@ namespace ClosingReport
             }
         }
 
+        public IEnumerable<DateTime> InboundTimes
+        {
+            get
+            {
+                return inbound.Select(x => x.FirstRingTime);
+            }
+        }
+
+        public IEnumerable<DateTime> OutboundTimes
+        {
+            get
+            {
+                return outbound.Select(x => x.FirstRingTime);
+            }
+        }
+
+        public IEnumerable<DateTime> AbandonedTimes
+        {
+            get
+            {
+                return abandon.Select(x => x.FirstRingTime);
+            }
+        }
+
         public Account(string name, int[] codes)
         {
             this.name = name;
@@ -292,38 +317,22 @@ namespace ClosingReport
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
 
-        private TimeSpan AverageTime(IEnumerable<TimeSpan> times)
+        private int[] thing(int x, int y)
         {
-            int collectionCount = 0;
-            TimeSpan totalTime = new TimeSpan(0);
-            foreach (TimeSpan time in times)
-            {
-                totalTime += time;
-                collectionCount++;
-            }
-            
-            if (collectionCount == 0)
-            {
-                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to compute average, no TimeSpan objects in enumerable");
-                return new TimeSpan(0);
-            }
-            
-            int avgDays = totalTime.Days / collectionCount;
-            int avgHours = totalTime.Hours / collectionCount;
-            int avgMinutes = totalTime.Minutes / collectionCount;
-            int avgSeconds = totalTime.Seconds / collectionCount;
-            int avgMilliseconds = totalTime.Milliseconds / collectionCount;
-            
-            return new TimeSpan(days: avgDays, hours: avgHours, minutes: avgMinutes, seconds: avgSeconds);
+            int foo = x / y;
+            int bar = x % y;
+
+            return new int[] { foo, bar };
         }
+
 
         public Stats Statistics()
         {
             return new Stats()
             {
                 AccountName = Name,
-                InboundAverage = AverageTime(from call in inbound select call.RingDuration),
-                AbandonedAverage = AverageTime(from call in abandon select call.CallDuration),
+                InboundAverage = TimeManagement.AverageTime(from call in inbound select call.RingDuration),
+                AbandonedAverage = TimeManagement.AverageTime(from call in abandon select call.CallDuration),
                 TotalInbound = TotalInbound,
                 TotalOutbound = TotalOutbound,
                 TotalAbandoned = TotalAbandoned

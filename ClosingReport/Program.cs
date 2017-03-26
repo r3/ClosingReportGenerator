@@ -52,8 +52,19 @@ namespace ClosingReport
                 csvPath: @"C:\abandons.csv"
             ).ProcessCalls();
 
-            //HtmlView view = new HtmlView(accounts);
-            //view.SaveToFile();
+            HtmlView view = new HtmlView(accounts);
+            view.SaveToFile();
+
+            /*
+            foreach (var account in accounts)
+            {
+                var inboundTracker = new TimeManagement();
+                inboundTracker.AddTimes(account.InboundTimes);
+
+                var outboundTracker = new TimeManagement();
+                //...
+            }
+            */
         }
     }
 
