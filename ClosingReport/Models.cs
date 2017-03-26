@@ -317,15 +317,6 @@ namespace ClosingReport
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
 
-        private int[] thing(int x, int y)
-        {
-            int foo = x / y;
-            int bar = x % y;
-
-            return new int[] { foo, bar };
-        }
-
-
         public Stats Statistics()
         {
             return new Stats()
