@@ -145,7 +145,6 @@ namespace ClosingReport
                 TimeSpan ringDuration = stampToSpan(row[5]);
 
                 InboundCall call = new InboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId, ringDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Parsed call: <<{call.RingDuration}>> {call}");
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
             }
@@ -224,7 +223,10 @@ namespace ClosingReport
         private int[] codes;
         private List<InboundCall> inbound;
         private List<OutboundCall> outbound;
-        private List<AbandonedCall> abandon;
+        private List<AbandonedCall> abandoned;
+        private TimeManagement inboundTimes;
+        private TimeManagement outboundTimes;
+        private TimeManagement abandonedTimes;
 
         public string Name
         {
@@ -262,31 +264,31 @@ namespace ClosingReport
         {
             get
             {
-                return abandon.Count;
+                return abandoned.Count;
             }
         }
 
-        public IEnumerable<DateTime> InboundTimes
+        public TimeManagement InboundTimes
         {
             get
             {
-                return inbound.Select(x => x.FirstRingTime);
+                return inboundTimes;
             }
         }
 
-        public IEnumerable<DateTime> OutboundTimes
+        public TimeManagement OutboundTimes
         {
             get
             {
-                return outbound.Select(x => x.FirstRingTime);
+                return outboundTimes;
             }
         }
 
-        public IEnumerable<DateTime> AbandonedTimes
+        public TimeManagement AbandonedTimes
         {
             get
             {
-                return abandon.Select(x => x.FirstRingTime);
+                return abandonedTimes;
             }
         }
 
@@ -294,26 +296,34 @@ namespace ClosingReport
         {
             this.name = name;
             this.codes = codes;
-            this.inbound = new List<InboundCall>();
-            this.outbound = new List<OutboundCall>();
-            this.abandon = new List<AbandonedCall>();
+
+            inbound = new List<InboundCall>();
+            outbound = new List<OutboundCall>();
+            abandoned = new List<AbandonedCall>();
+
+            inboundTimes = new TimeManagement();
+            outboundTimes = new TimeManagement();
+            abandonedTimes = new TimeManagement();
         }
 
         public void AddCall(InboundCall call)
         {
             inbound.Add(call);
+            inboundTimes.AddTime(call.FirstRingTime);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
 
         public void AddCall(OutboundCall call)
         {
             outbound.Add(call);
+            outboundTimes.AddTime(call.FirstRingTime);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
         }
 
         public void AddCall(AbandonedCall call)
         {
-            abandon.Add(call);
+            abandoned.Add(call);
+            abandonedTimes.AddTime(call.FirstRingTime);
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
 
@@ -323,7 +333,7 @@ namespace ClosingReport
             {
                 AccountName = Name,
                 InboundAverage = TimeManagement.AverageTime(from call in inbound select call.RingDuration),
-                AbandonedAverage = TimeManagement.AverageTime(from call in abandon select call.CallDuration),
+                AbandonedAverage = TimeManagement.AverageTime(from call in abandoned select call.CallDuration),
                 TotalInbound = TotalInbound,
                 TotalOutbound = TotalOutbound,
                 TotalAbandoned = TotalAbandoned
@@ -440,12 +450,20 @@ namespace ClosingReport
 
         IEnumerator<Account> IEnumerable<Account>.GetEnumerator()
         {
-            return accounts as IEnumerator<Account>;
+            foreach (Account account in accounts.Values.Distinct<Account>())
+            {
+                yield return account;
+            }
+            yield break;
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return accounts as IEnumerator;
+            foreach (Account account in accounts.Values.Distinct<Account>())
+            {
+                yield return account;
+            }
+            yield break;
         }
     }
 }

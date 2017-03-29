@@ -40,7 +40,7 @@ namespace ClosingReport
                     throw new ArgumentException($"TimeIncrement of '{unparsed}' is not valid. Should be an integer. Got error: {e.Message}");
                 }
 
-                if (increment % 5 != 0 || increment < 5)
+                if (parsed % 5 != 0 || parsed < 5)
                 {
                     throw new ArgumentException($"TimeIncrement is not a multiple of five, or is lower than five.");
                 }
@@ -155,22 +155,20 @@ namespace ClosingReport
             {
                 count[index] = 0;
                 index += incrementAsSpan;
-                ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"THING: Adding TimeSpan: {index}");
             }
         }
 
-        public void AddTimes(IEnumerable<DateTime> times)
+        public void AddTime(DateTime time)
         {
-            foreach (var time in times)
-            {
-                TimeSpan rounded = NearestIncrement(time);
+            TimeSpan rounded = NearestIncrement(time);
 
-                if (rounded < OpeningTime || rounded > ClosingTime)
-                {
-                    throw new ArgumentException($"Encountered time outside of opening ({OpeningTime}) and closing ({ClosingTime}) time: {time}");
-                }
-                count[rounded]++;
+            if (rounded < OpeningTime || rounded > ClosingTime)
+            {
+                throw new ArgumentException($"Encountered time outside of opening ({OpeningTime}) and closing ({ClosingTime}) time: {time}");
             }
+            count[rounded]++;
+
+            ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Adding time, {time} to tracking as {rounded}. Count is now, {count[rounded]}");
         }
     }
 

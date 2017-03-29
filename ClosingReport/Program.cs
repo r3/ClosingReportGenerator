@@ -52,19 +52,17 @@ namespace ClosingReport
                 csvPath: @"C:\abandons.csv"
             ).ProcessCalls();
 
-            HtmlView view = new HtmlView(accounts);
-            view.SaveToFile();
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
-            /*
-            foreach (var account in accounts)
-            {
-                var inboundTracker = new TimeManagement();
-                inboundTracker.AddTimes(account.InboundTimes);
+            string barChartDestination = Path.Combine(desktop, @"barChart.png");
+            BarChartView barChart = new BarChartView();
+            barChart.AddAccounts(accounts);
+            barChart.Render();
+            barChart.SaveToFile(barChartDestination);
 
-                var outboundTracker = new TimeManagement();
-                //...
-            }
-            */
+            string htmlDestination = Path.Combine(desktop, @"view.html");
+            HtmlView htmlView = new HtmlView(accounts);
+            htmlView.SaveToFile(htmlDestination);
         }
     }
 
