@@ -96,6 +96,127 @@ namespace ClosingReport
         }
     }
 
+    class LineChartView
+    {
+        private PlotModel Model
+        {
+            get; set;
+        }
+
+        private OxyPlot.Series.LineSeries InboundSeries
+        {
+            get; set;
+        }
+
+        private OxyPlot.Series.LineSeries OutboundSeries
+        {
+            get; set;
+        }
+
+        private OxyPlot.Series.LineSeries AbandonedSeries
+        {
+            get; set;
+        }
+
+        private OxyPlot.Axes.LinearAxis FrequencyAxis
+        {
+            get; set;
+        }
+
+        private OxyPlot.Axes.TimeSpanAxis TimeAxis
+        {
+            get; set;
+        }
+
+        public LineChartView()
+        {
+            Model = new PlotModel() { Title = "Calls by Time" };
+            Model.LegendPlacement = LegendPlacement.Outside;
+            Model.LegendPosition = LegendPosition.TopRight;
+            FrequencyAxis = new OxyPlot.Axes.LinearAxis() { Position = AxisPosition.Left };
+            TimeAxis = new OxyPlot.Axes.TimeSpanAxis()
+            {
+                Position = AxisPosition.Bottom,
+                MinimumPadding = 0,
+                MaximumPadding = 0.06,
+                AbsoluteMinimum = 0
+            };
+
+            InboundSeries = new OxyPlot.Series.LineSeries()
+            {
+                Title = "Inbound",
+                Color = OxyColors.SkyBlue,
+                MarkerType = MarkerType.Circle,
+                MarkerSize = 6,
+                MarkerStroke = OxyColors.White,
+                MarkerFill = OxyColors.SkyBlue,
+                MarkerStrokeThickness = 1.5
+            };
+            OutboundSeries = new OxyPlot.Series.LineSeries()
+            {
+                Title = "Outbound",
+                Color = OxyColors.LawnGreen,
+                MarkerType = MarkerType.Square,
+                MarkerSize = 6,
+                MarkerStroke = OxyColors.White,
+                MarkerFill = OxyColors.LawnGreen,
+                MarkerStrokeThickness = 1.5
+            };
+            AbandonedSeries = new OxyPlot.Series.LineSeries()
+            {
+                Title = "Abandoned",
+                Color = OxyColors.OrangeRed,
+                MarkerType = MarkerType.Cross,
+                MarkerSize = 6,
+                MarkerStroke = OxyColors.White,
+                MarkerFill = OxyColors.OrangeRed,
+                MarkerStrokeThickness = 1.5
+            };
+
+        }
+
+        public void AddAccounts(Accounts accounts)
+        {
+            foreach (Account account in accounts)
+            {
+                foreach (KeyValuePair<TimeSpan, int> pair in account.InboundTimes)
+                {
+                    InboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+                }
+                foreach (KeyValuePair<TimeSpan, int> pair in account.OutboundTimes)
+                {
+                    OutboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+                }
+                foreach (KeyValuePair<TimeSpan, int> pair in account.AbandonedTimes)
+                {
+                    AbandonedSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+                }
+            }
+        }
+
+        public void Render()
+        {
+            Model.Series.Add(InboundSeries);
+            Model.Series.Add(OutboundSeries);
+            Model.Series.Add(AbandonedSeries);
+            Model.Axes.Add(TimeAxis);
+            Model.Axes.Add(FrequencyAxis);
+        }
+
+        public void SaveToFile(string path)
+        {
+            var exporter = new PngExporter() { Width = 600, Height = 400 };
+            var thread = new Thread(() =>
+            {
+                exporter.ExportToFile(Model, path);
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+        }
+    }
+
+
     class HtmlView
     {
         private static string templatePath = @"View.template";

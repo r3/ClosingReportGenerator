@@ -60,6 +60,12 @@ namespace ClosingReport
             barChart.Render();
             barChart.SaveToFile(barChartDestination);
 
+            string lineChartDestination = Path.Combine(desktop, @"lineChart.png");
+            LineChartView lineChart = new LineChartView();
+            lineChart.AddAccounts(accounts);
+            lineChart.Render();
+            lineChart.SaveToFile(lineChartDestination);
+
             string htmlDestination = Path.Combine(desktop, @"view.html");
             HtmlView htmlView = new HtmlView(accounts);
             htmlView.SaveToFile(htmlDestination);

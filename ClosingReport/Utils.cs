@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
@@ -6,7 +7,7 @@ using System.Linq;
 
 namespace ClosingReport
 {
-    public class TimeManagement
+    public class TimeManagement : IEnumerable<KeyValuePair<TimeSpan, int>>
     {
         public const int HOURS_IN_DAY = 24;
         public const int MINUTES_IN_HOUR = 60;
@@ -17,7 +18,7 @@ namespace ClosingReport
         private static TimeSpan openingTime;
         private static TimeSpan closingTime;
 
-        private Dictionary<TimeSpan, int> count;
+        private SortedDictionary<TimeSpan, int> count;
 
         public static int Increment
         {
@@ -150,7 +151,7 @@ namespace ClosingReport
             TimeSpan index = OpeningTime;
             TimeSpan incrementAsSpan = new TimeSpan(hours: 0, minutes: Increment, seconds: 0);
 
-            count = new Dictionary<TimeSpan, int>();
+            count = new SortedDictionary<TimeSpan, int>();
             while (index < ClosingTime)
             {
                 count[index] = 0;
@@ -169,6 +170,26 @@ namespace ClosingReport
             count[rounded]++;
 
             ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Adding time, {time} to tracking as {rounded}. Count is now, {count[rounded]}");
+        }
+
+        public IEnumerator<KeyValuePair<TimeSpan, int>> GetEnumerator()
+        {
+            foreach (var pair in count)
+            {
+                yield return pair;
+            }
+
+            yield break;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            foreach (var pair in count)
+            {
+                yield return pair;
+            }
+
+            yield break;
         }
     }
 
