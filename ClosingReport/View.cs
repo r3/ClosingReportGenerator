@@ -183,6 +183,7 @@ namespace ClosingReport
                 {
                     InboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
                 }
+                /*
                 foreach (KeyValuePair<TimeSpan, int> pair in account.OutboundTimes)
                 {
                     OutboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
@@ -191,6 +192,7 @@ namespace ClosingReport
                 {
                     AbandonedSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
                 }
+                */
             }
         }
 
