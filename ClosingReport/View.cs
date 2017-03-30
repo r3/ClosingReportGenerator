@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using RazorEngine;
 using RazorEngine.Templating;
-using System.Configuration;
 using OxyPlot;
 using OxyPlot.Wpf;
 using OxyPlot.Axes;
@@ -177,22 +176,17 @@ namespace ClosingReport
 
         public void AddAccounts(Accounts accounts)
         {
-            foreach (Account account in accounts)
+            foreach (KeyValuePair<TimeSpan, int> pair in accounts.InboundTimes)
             {
-                foreach (KeyValuePair<TimeSpan, int> pair in account.InboundTimes)
-                {
-                    InboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
-                }
-                /*
-                foreach (KeyValuePair<TimeSpan, int> pair in account.OutboundTimes)
-                {
-                    OutboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
-                }
-                foreach (KeyValuePair<TimeSpan, int> pair in account.AbandonedTimes)
-                {
-                    AbandonedSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
-                }
-                */
+                InboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+            }
+            foreach (KeyValuePair<TimeSpan, int> pair in accounts.OutboundTimes)
+            {
+                OutboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+            }
+            foreach (KeyValuePair<TimeSpan, int> pair in accounts.AbandonedTimes)
+            {
+                AbandonedSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
             }
         }
 
@@ -207,7 +201,7 @@ namespace ClosingReport
 
         public void SaveToFile(string path)
         {
-            var exporter = new PngExporter() { Width = 600, Height = 400 };
+            var exporter = new PngExporter() { Width = 800, Height = 600 };
             var thread = new Thread(() =>
             {
                 exporter.ExportToFile(Model, path);

@@ -224,9 +224,9 @@ namespace ClosingReport
         private List<InboundCall> inbound;
         private List<OutboundCall> outbound;
         private List<AbandonedCall> abandoned;
-        private TimeManagement inboundTimes;
-        private TimeManagement outboundTimes;
-        private TimeManagement abandonedTimes;
+        private TimeManagement inboundTimes = null;
+        private TimeManagement outboundTimes = null;
+        private TimeManagement abandonedTimes = null;
 
         public string Name
         {
@@ -274,6 +274,10 @@ namespace ClosingReport
             {
                 return inboundTimes;
             }
+            set
+            {
+                inboundTimes = value;
+            }
         }
 
         public TimeManagement OutboundTimes
@@ -282,6 +286,10 @@ namespace ClosingReport
             {
                 return outboundTimes;
             }
+            set
+            {
+                outboundTimes = value;
+            }
         }
 
         public TimeManagement AbandonedTimes
@@ -289,6 +297,10 @@ namespace ClosingReport
             get
             {
                 return abandonedTimes;
+            }
+            set
+            {
+                abandonedTimes = value;
             }
         }
 
@@ -300,30 +312,35 @@ namespace ClosingReport
             inbound = new List<InboundCall>();
             outbound = new List<OutboundCall>();
             abandoned = new List<AbandonedCall>();
-
-            inboundTimes = new TimeManagement();
-            outboundTimes = new TimeManagement();
-            abandonedTimes = new TimeManagement();
         }
 
         public void AddCall(InboundCall call)
         {
             inbound.Add(call);
-            inboundTimes.AddTime(call.FirstRingTime);
+            if (inboundTimes != null)
+            {
+                inboundTimes.AddTime(call.FirstRingTime);
+            }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
 
         public void AddCall(OutboundCall call)
         {
             outbound.Add(call);
-            outboundTimes.AddTime(call.FirstRingTime);
+            if (outboundTimes != null)
+            {
+                outboundTimes.AddTime(call.FirstRingTime);
+            }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
         }
 
         public void AddCall(AbandonedCall call)
         {
             abandoned.Add(call);
-            abandonedTimes.AddTime(call.FirstRingTime);
+            if (abandonedTimes != null)
+            {
+                abandonedTimes.AddTime(call.FirstRingTime);
+            }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
 
@@ -386,15 +403,36 @@ namespace ClosingReport
             }
         }
 
+        public TimeManagement InboundTimes
+        {
+            get; private set;
+        }
+
+        public TimeManagement OutboundTimes
+        {
+            get; private set;
+        }
+
+        public TimeManagement AbandonedTimes
+        {
+            get; private set;
+        }
+
         public Accounts(int sentinel)
         {
             this.sentinel = sentinel;
             accounts = new Dictionary<int, Account>();
+            InboundTimes = new TimeManagement();
+            OutboundTimes = new TimeManagement();
+            AbandonedTimes = new TimeManagement();
 
             var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
             foreach (AccountsElement elem in cfg.Accounts)
             {
                 var account = new Account(elem.AccountName, elem.AccountCodes);
+                account.InboundTimes = InboundTimes;
+                account.OutboundTimes = OutboundTimes;
+                account.AbandonedTimes = AbandonedTimes;
 
                 foreach (var code in elem.AccountCodes)
                 {

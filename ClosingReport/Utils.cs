@@ -163,19 +163,15 @@ namespace ClosingReport
 
         public void AddTime(DateTime time)
         {
-            ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Adding time, {time} to tracking.");
             TimeSpan rounded = NearestIncrement(time);
 
-            // TODO:
-            // Parse Open and ClosingTime as a DateTime, and then check for inclusion prior to rounding to increment
-            // Perhaps just manage this check when adding the call instead, or in both locations, I guess.
             if (rounded < OpeningTime || rounded > ClosingTime)
             {
                 throw new ArgumentException($"Encountered time outside of opening ({OpeningTime}) and closing ({ClosingTime}) time: {time}");
             }
-            ReportRunner.log.TraceEvent(TraceEventType.Critical, 0, $"Rounded: {rounded}");
-            count[rounded]++;
 
+            count[rounded]++;
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Added time, {time} to tracking as {rounded}. Count is now {count[rounded]}.");
         }
 
         public IEnumerator<KeyValuePair<TimeSpan, int>> GetEnumerator()

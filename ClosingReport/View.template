@@ -10,6 +10,9 @@
           margin-left:auto;
           margin-right:0px;
       }
+      .wide_image {
+          width:80%;
+      }
       img {
           display:inline-block;
       }
@@ -210,5 +213,9 @@
 	  </table>
       }
     </div>
+    <hr />
+    <center>
+      <img class="wide_image" src="lineChart.png" />
+    </center>
   </body>
 </html>
