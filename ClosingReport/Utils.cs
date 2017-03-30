@@ -103,7 +103,7 @@ namespace ClosingReport
 
         public static TimeSpan NearestIncrement(DateTime time)
         {
-            int minutesToNearestIncrement = time.Minute / Increment;
+            int minutesToNearestIncrement = (time.Minute / Increment) * Increment;
             return new TimeSpan(
                 hours: time.Hour,
                 minutes: minutesToNearestIncrement,
