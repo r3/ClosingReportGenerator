@@ -19,78 +19,34 @@ namespace ClosingReport
 
     abstract class Call
     {
-        private DateTime firstRingTime;
-        private int accountCode;
-        private TimeSpan callDuration;
-        private string telephoneNumber;
-        private int agentId;
-        private TimeSpan ringDuration;
-        
-        public Call(DateTime firstRingTime, int accountCode, TimeSpan callDuration)
-        {
-            this.firstRingTime = firstRingTime;
-            this.accountCode = accountCode;
-            this.callDuration = callDuration;
-        }
-
         public DateTime FirstRingTime
         {
-            get
-            {
-                return firstRingTime;
-            }
+            get; set;
         }
 
         public int AccountCode
         {
-            get
-            {
-                return accountCode;
-            }
+            get; set;
         }
 
         public TimeSpan CallDuration
         {
-            get
-            {
-                return callDuration;
-            }
+            get; set;
         }
 
         public string TelephoneNumber
         {
-            get
-            {
-                return telephoneNumber;
-            }
-            set
-            {
-                telephoneNumber = value;
-            }
+            get; set;
         }
 
         public int AgentId
         {
-            get
-            {
-                return agentId;
-            }
-            set
-            {
-                agentId = value;
-            }
+            get; set;
         }
 
         public TimeSpan RingDuration
         {
-            get
-            {
-                return this.ringDuration;
-            }
-            set
-            {
-                this.ringDuration = value;
-            }
+            get; set;
         }
 
         public override string ToString()
@@ -98,7 +54,7 @@ namespace ClosingReport
             return $"Call(firstRingTime: {FirstRingTime}, accountCode: {AccountCode}, callDuration: {CallDuration})";
         }
 
-        public static TimeSpan stampToSpan(string timestamp)
+        protected static TimeSpan stampToSpan(string timestamp)
         {
             string[] timeParts = timestamp.Split(':');
             int hrs, mins, secs;
@@ -115,6 +71,13 @@ namespace ClosingReport
             }
 
             return new TimeSpan(hrs, mins, secs);
+        }
+
+        public Call(DateTime firstRingTime, int accountCode, TimeSpan callDuration)
+        {
+            FirstRingTime = firstRingTime;
+            AccountCode = accountCode;
+            CallDuration = callDuration;
         }
     }
 
@@ -219,7 +182,6 @@ namespace ClosingReport
 
     class Account
     {
-        private string name;
         private int[] codes;
         private List<InboundCall> inbound;
         private List<OutboundCall> outbound;
@@ -230,18 +192,12 @@ namespace ClosingReport
 
         public string Name
         {
-            get
-            {
-                return name;
-            }
+            get; set;
         }
 
         public int[] Codes
         {
-            get
-            {
-                return codes;
-            }
+            get; set;
         }
 
         public int TotalInbound
@@ -306,8 +262,8 @@ namespace ClosingReport
 
         public Account(string name, int[] codes)
         {
-            this.name = name;
-            this.codes = codes;
+            Name = name;
+            Codes = codes;
 
             inbound = new List<InboundCall>();
             outbound = new List<OutboundCall>();
@@ -317,9 +273,9 @@ namespace ClosingReport
         public void AddCall(InboundCall call)
         {
             inbound.Add(call);
-            if (inboundTimes != null)
+            if (InboundTimes != null)
             {
-                inboundTimes.AddTime(call.FirstRingTime);
+                InboundTimes.AddTime(call.FirstRingTime);
             }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
@@ -327,9 +283,9 @@ namespace ClosingReport
         public void AddCall(OutboundCall call)
         {
             outbound.Add(call);
-            if (outboundTimes != null)
+            if (OutboundTimes != null)
             {
-                outboundTimes.AddTime(call.FirstRingTime);
+                OutboundTimes.AddTime(call.FirstRingTime);
             }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
         }
@@ -337,9 +293,9 @@ namespace ClosingReport
         public void AddCall(AbandonedCall call)
         {
             abandoned.Add(call);
-            if (abandonedTimes != null)
+            if (AbandonedTimes != null)
             {
-                abandonedTimes.AddTime(call.FirstRingTime);
+                AbandonedTimes.AddTime(call.FirstRingTime);
             }
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
         }
@@ -362,6 +318,7 @@ namespace ClosingReport
     {
         private Dictionary<int, Account> accounts;
         private int sentinel;
+        private bool? includeOthers = null;
 
         public int InboundCount
         {
@@ -418,6 +375,28 @@ namespace ClosingReport
             get; private set;
         }
 
+        public bool IncludeOthers
+        {
+            get
+            {
+                if (includeOthers == null)
+                {
+                    string unparsed = ConfigurationManager.AppSettings["IncludeOthers"];
+                    try
+                    {
+                        includeOthers = bool.Parse(unparsed);
+                    }
+                    catch (ArgumentException)
+                    {
+                        ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Could not parse, 'IncludeOthers' from config (read: {unparsed}, defaulting to false");
+                        includeOthers = false;
+                    }
+                }
+
+                return (bool)includeOthers;
+            }
+        }
+
         public Accounts(int sentinel)
         {
             this.sentinel = sentinel;
@@ -430,9 +409,20 @@ namespace ClosingReport
             foreach (AccountsElement elem in cfg.Accounts)
             {
                 var account = new Account(elem.AccountName, elem.AccountCodes);
-                account.InboundTimes = InboundTimes;
-                account.OutboundTimes = OutboundTimes;
-                account.AbandonedTimes = AbandonedTimes;
+
+
+                if (account.Name == "Others" && IncludeOthers)
+                {
+                    account.InboundTimes = (IncludeOthers) ? InboundTimes : new TimeManagement();
+                    account.OutboundTimes = (IncludeOthers) ? OutboundTimes : new TimeManagement();
+                    account.AbandonedTimes = (IncludeOthers) ? AbandonedTimes : new TimeManagement();
+                }
+                else
+                {
+                    account.InboundTimes = InboundTimes;
+                    account.OutboundTimes = OutboundTimes;
+                    account.AbandonedTimes = AbandonedTimes;
+                }
 
                 foreach (var code in elem.AccountCodes)
                 {
