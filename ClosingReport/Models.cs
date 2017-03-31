@@ -182,7 +182,6 @@ namespace ClosingReport
 
     class Account
     {
-        private int[] codes;
         private List<InboundCall> inbound;
         private List<OutboundCall> outbound;
         private List<AbandonedCall> abandoned;

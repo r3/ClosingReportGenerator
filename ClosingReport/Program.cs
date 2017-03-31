@@ -67,7 +67,9 @@ namespace ClosingReport
             lineChart.SaveToFile(lineChartDestination);
 
             string htmlDestination = Path.Combine(desktop, @"view.html");
-            HtmlView htmlView = new HtmlView(accounts);
+            HtmlView htmlView = new HtmlView();
+            htmlView.AddAccounts(accounts);
+            htmlView.Render();
             htmlView.SaveToFile(htmlDestination);
         }
     }

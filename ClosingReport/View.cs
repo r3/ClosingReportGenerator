@@ -11,6 +11,12 @@ using System.Threading;
 
 namespace ClosingReport
 {
+    interface IView
+    {
+        void AddAccounts(Accounts accounts);
+        void SaveToFile(string path);       
+    }
+
     class BarChartView
     {
         private PlotModel Model
@@ -223,12 +229,31 @@ namespace ClosingReport
             private set;
         }
 
-        public HtmlView(Accounts accounts)
+        private object Model
         {
-            Render(accounts);
+            get; set;
         }
 
-        private void Render(Accounts accounts)
+        public HtmlView()
+        {
+        }
+
+        public void AddAccounts(Accounts accounts)
+        {
+            Model = new
+            {
+                Statistics = accounts.Statistics(),
+                Totals = new
+                {
+                    TotalReceived = accounts.TotalCount,
+                    Inbound = accounts.InboundCount,
+                    Outbound = accounts.OutboundCount,
+                    AbandonRate = accounts.AbandonedRate
+                }
+            };
+        }
+
+        public void Render()
         {
             if (!File.Exists(templatePath))
             {
@@ -245,17 +270,7 @@ namespace ClosingReport
                 templateSource: template,
                 name: "ClosingReportKey",
                 modelType: null,
-                model: new
-                {
-                    Statistics = accounts.Statistics(),
-                    Totals = new
-                    {
-                        TotalReceived = accounts.TotalCount,
-                        Inbound = accounts.InboundCount,
-                        Outbound = accounts.OutboundCount,
-                        AbandonRate = accounts.AbandonedRate
-                    }
-                }
+                model: Model
             );
         }
 
