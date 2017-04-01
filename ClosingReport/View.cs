@@ -8,6 +8,7 @@ using OxyPlot.Wpf;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using System.Threading;
+using RazorEngine.Configuration;
 
 namespace ClosingReport
 {
@@ -17,8 +18,10 @@ namespace ClosingReport
         void SaveToFile(string path);       
     }
 
-    class BarChartView
+    class BarChartView : IView
     {
+        private bool rendered = false;
+
         private PlotModel Model
         {
             get; set;
@@ -79,17 +82,23 @@ namespace ClosingReport
             }
         }
 
-        public void Render()
+        private void Render()
         {
             Model.Series.Add(InboundSeries);
             Model.Series.Add(OutboundSeries);
             Model.Series.Add(AbandonedSeries);
             Model.Axes.Add(CategoryAxis);
             Model.Axes.Add(ValueAxis);
+            rendered = true;
         }
 
         public void SaveToFile(string path)
         {
+            if (!rendered)
+            {
+                Render();
+            }
+
             var exporter = new PngExporter() { Width = 600, Height = 400 };
             var thread = new Thread(() =>
             {
@@ -101,8 +110,10 @@ namespace ClosingReport
         }
     }
 
-    class LineChartView
+    class LineChartView : IView
     {
+        private bool rendered = false;
+
         private PlotModel Model
         {
             get; set;
@@ -196,17 +207,23 @@ namespace ClosingReport
             }
         }
 
-        public void Render()
+        private void Render()
         {
             Model.Series.Add(InboundSeries);
             Model.Series.Add(OutboundSeries);
             Model.Series.Add(AbandonedSeries);
             Model.Axes.Add(TimeAxis);
             Model.Axes.Add(FrequencyAxis);
+            rendered = true;
         }
 
         public void SaveToFile(string path)
         {
+            if (!rendered)
+            {
+                Render();
+            }
+
             var exporter = new PngExporter() { Width = 800, Height = 600 };
             var thread = new Thread(() =>
             {
@@ -219,9 +236,10 @@ namespace ClosingReport
     }
 
 
-    class HtmlView
+    class HtmlView : IView
     {
         private static string templatePath = @"View.template";
+        private bool rendered = false;
 
         public string ResultString
         {
@@ -236,6 +254,9 @@ namespace ClosingReport
 
         public HtmlView()
         {
+            var config = new TemplateServiceConfiguration();
+            config.DisableTempFileLocking = false;
+            Engine.Razor = RazorEngineService.Create(config);
         }
 
         public void AddAccounts(Accounts accounts)
@@ -253,7 +274,7 @@ namespace ClosingReport
             };
         }
 
-        public void Render()
+        private void Render()
         {
             if (!File.Exists(templatePath))
             {
@@ -272,10 +293,17 @@ namespace ClosingReport
                 modelType: null,
                 model: Model
             );
+
+            rendered = true;
         }
 
         public void SaveToFile(string path)
         {
+            if (!rendered)
+            {
+                Render();
+            }
+
             using (StreamWriter writer = new StreamWriter(path))
             {
                 writer.Write(ResultString);

@@ -55,21 +55,18 @@ namespace ClosingReport
             string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
             string barChartDestination = Path.Combine(desktop, @"barChart.png");
-            BarChartView barChart = new BarChartView();
+            IView barChart = new BarChartView();
             barChart.AddAccounts(accounts);
-            barChart.Render();
             barChart.SaveToFile(barChartDestination);
 
             string lineChartDestination = Path.Combine(desktop, @"lineChart.png");
-            LineChartView lineChart = new LineChartView();
+            IView lineChart = new LineChartView();
             lineChart.AddAccounts(accounts);
-            lineChart.Render();
             lineChart.SaveToFile(lineChartDestination);
 
             string htmlDestination = Path.Combine(desktop, @"view.html");
-            HtmlView htmlView = new HtmlView();
+            IView htmlView = new HtmlView();
             htmlView.AddAccounts(accounts);
-            htmlView.Render();
             htmlView.SaveToFile(htmlDestination);
         }
     }

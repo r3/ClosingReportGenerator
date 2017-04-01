@@ -148,6 +148,25 @@ namespace ClosingReport
             return new TimeSpan(days: avgDays, hours: avgHours, minutes: avgMinutes, seconds: avgSeconds);
         }
 
+        public static TimeSpan StampToSpan(string timestamp)
+        {
+            string[] timeParts = timestamp.Split(':');
+            int hrs, mins, secs;
+
+            try
+            {
+                hrs = int.Parse(timeParts[0]);
+                mins = int.Parse(timeParts[1]);
+                secs = int.Parse(timeParts[2]);
+            }
+            catch (Exception e)
+            {
+                throw new ParseException($"Failed to parse '{timestamp}' to TimeSpan. Got error: {e.Message}");
+            }
+
+            return new TimeSpan(hrs, mins, secs);
+        }
+
         public TimeManagement()
         {
             TimeSpan index = OpeningTime;

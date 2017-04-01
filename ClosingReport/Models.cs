@@ -17,7 +17,26 @@ namespace ClosingReport
         public int TotalAbandoned;
     }
 
-    abstract class Call
+    enum CommDirection
+    {
+        Inbound,
+        Outbound
+    }
+
+    interface ICommunication
+    {
+        DateTime FirstRingTime
+        {
+            get;
+        }
+
+        int AccountCode
+        {
+            get;
+        }
+    }
+
+    abstract class Call : ICommunication
     {
         public DateTime FirstRingTime
         {
@@ -54,25 +73,6 @@ namespace ClosingReport
             return $"Call(firstRingTime: {FirstRingTime}, accountCode: {AccountCode}, callDuration: {CallDuration})";
         }
 
-        protected static TimeSpan stampToSpan(string timestamp)
-        {
-            string[] timeParts = timestamp.Split(':');
-            int hrs, mins, secs;
-
-            try
-            {
-                hrs = int.Parse(timeParts[0]);
-                mins = int.Parse(timeParts[1]);
-                secs = int.Parse(timeParts[2]);
-            }
-            catch (Exception e)
-            {
-                throw new ParseException($"Failed to parse '{timestamp}' to TimeSpan. Got error: {e.Message}");
-            }
-
-            return new TimeSpan(hrs, mins, secs);
-        }
-
         public Call(DateTime firstRingTime, int accountCode, TimeSpan callDuration)
         {
             FirstRingTime = firstRingTime;
@@ -97,7 +97,7 @@ namespace ClosingReport
             {
                 DateTime firstRingTime = DateTime.Parse(row[0]);
                 string telephoneNumber = row[1];
-                TimeSpan callDuration = stampToSpan(row[2]);
+                TimeSpan callDuration = TimeManagement.StampToSpan(row[2]);
 
                 int agentId = ReportRunner.sentinel;
                 int.TryParse(row[3], out agentId);
@@ -105,7 +105,7 @@ namespace ClosingReport
                 int accountCode = ReportRunner.sentinel;
                 int.TryParse(row[4], out accountCode);
 
-                TimeSpan ringDuration = stampToSpan(row[5]);
+                TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
 
                 InboundCall call = new InboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId, ringDuration);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
@@ -133,7 +133,7 @@ namespace ClosingReport
             {
                 DateTime firstRingTime = DateTime.Parse(record[0]);
                 string telephoneNumber = record[1];
-                TimeSpan callDuration = stampToSpan(record[2]);
+                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
 
                 int agentId = ReportRunner.sentinel;
                 int.TryParse(record[3], out agentId);
@@ -168,7 +168,7 @@ namespace ClosingReport
                 int accountCode = ReportRunner.sentinel;
                 int.TryParse(record[1], out accountCode);
 
-                TimeSpan callDuration = stampToSpan(record[2]);
+                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
                 AbandonedCall call = new AbandonedCall(firstRingTime, accountCode, callDuration);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
                 return call;
@@ -477,20 +477,26 @@ namespace ClosingReport
 
         IEnumerator<Account> IEnumerable<Account>.GetEnumerator()
         {
+            return accounts.Values.Distinct<Account>().GetEnumerator();
+            /*
             foreach (Account account in accounts.Values.Distinct<Account>())
             {
                 yield return account;
             }
             yield break;
+            */
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
+            return accounts.Values.Distinct().GetEnumerator();
+            /*
             foreach (Account account in accounts.Values.Distinct<Account>())
             {
                 yield return account;
             }
             yield break;
+            */
         }
     }
 }
