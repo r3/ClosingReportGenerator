@@ -25,169 +25,67 @@ namespace ClosingReport
 
     interface ICommunication
     {
-        DateTime FirstRingTime
+        CommDirection Direction
+        {
+            get;
+        }
+        
+        bool WasReceived
         {
             get;
         }
 
-        int AccountCode
+        DateTime TimeOfReceipt
+        {
+            get;
+        }
+
+        object Channel
         {
             get;
         }
     }
 
-    abstract class Call : ICommunication
+    class Communication : ICommunication
     {
-        public DateTime FirstRingTime
+        public CommDirection Direction
         {
-            get; set;
+            get;
         }
 
-        public int AccountCode
+        public bool WasReceived
         {
-            get; set;
+            get;
         }
 
-        public TimeSpan CallDuration
+        public DateTime TimeOfReceipt
         {
-            get; set;
+            get;
         }
 
-        public string TelephoneNumber
+        public object Channel
         {
-            get; set;
-        }
-
-        public int AgentId
-        {
-            get; set;
-        }
-
-        public TimeSpan RingDuration
-        {
-            get; set;
+            get;
         }
 
         public override string ToString()
         {
-            return $"Call(firstRingTime: {FirstRingTime}, accountCode: {AccountCode}, callDuration: {CallDuration})";
+            return $"Communication(FirstRingTime: {TimeOfReceipt}, AccountCode: {Channel}, Direction: {Direction}, WasAnswered: {WasReceived})";
         }
 
-        public Call(DateTime firstRingTime, int accountCode, TimeSpan callDuration)
+        public Communication(DateTime firstRingTime, int accountCode, CommDirection direction, bool wasAnswered)
         {
-            FirstRingTime = firstRingTime;
-            AccountCode = accountCode;
-            CallDuration = callDuration;
-        }
-    }
-
-    class InboundCall : Call
-    {
-        public InboundCall(DateTime firstRingTime, int accountCode, TimeSpan callDuration, string telephoneNumber, int agentId, TimeSpan ringDuration)
-            : base(firstRingTime, accountCode, callDuration)
-        {
-            TelephoneNumber = telephoneNumber;
-            AgentId = agentId;
-            RingDuration = ringDuration;
-        }
-
-        public static InboundCall fromRecord(string[] row)
-        {
-            try
-            {
-                DateTime firstRingTime = DateTime.Parse(row[0]);
-                string telephoneNumber = row[1];
-                TimeSpan callDuration = TimeManagement.StampToSpan(row[2]);
-
-                int agentId = ReportRunner.sentinel;
-                int.TryParse(row[3], out agentId);
-
-                int accountCode = ReportRunner.sentinel;
-                int.TryParse(row[4], out accountCode);
-
-                TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
-
-                InboundCall call = new InboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId, ringDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
-                return call;
-            }
-            catch (Exception e)
-            {
-                throw new ParseException($"Unable to parse call from CVS row: {row}. Got error: {e.Message}");
-            }
-        }
-    }
-
-    class OutboundCall : Call
-    {
-        public OutboundCall(DateTime firstRingTime, int accountCode, TimeSpan callDuration, string telephoneNumber, int agentId)
-            : base(firstRingTime, accountCode, callDuration)
-        {
-            TelephoneNumber = telephoneNumber;
-            AgentId = agentId;
-        }
-
-        public static OutboundCall fromRecord(string[] record)
-        {
-            try
-            {
-                DateTime firstRingTime = DateTime.Parse(record[0]);
-                string telephoneNumber = record[1];
-                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
-
-                int agentId = ReportRunner.sentinel;
-                int.TryParse(record[3], out agentId);
-
-                int accountCode = ReportRunner.sentinel;
-                int.TryParse(record[4], out accountCode);
-
-                OutboundCall call = new OutboundCall(firstRingTime, accountCode, callDuration, telephoneNumber, agentId);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
-                return call;
-            }
-            catch (Exception e)
-            {
-                throw new ParseException($"Unable to parse call from CVS row: {record}. Got error: {e.Message}");
-            }
-        }
-    }
-
-    class AbandonedCall : Call
-    {
-        public AbandonedCall(DateTime firstRingTime, int accountCode, TimeSpan callDuration)
-            : base(firstRingTime, accountCode, callDuration)
-        {
-        }
-
-        public static AbandonedCall fromRecord(string[] record)
-        {
-            try
-            {
-                DateTime firstRingTime = DateTime.Parse(record[0]);
-
-                int accountCode = ReportRunner.sentinel;
-                int.TryParse(record[1], out accountCode);
-
-                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
-                AbandonedCall call = new AbandonedCall(firstRingTime, accountCode, callDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed call: {call}");
-                return call;
-            }
-            catch (Exception e)
-            {
-                throw new ParseException($"Unable to parse call from CVS row: {record}. Got error: {e.Message}");
-            }
+            TimeOfReceipt = firstRingTime;
+            Channel = accountCode;
+            Direction = direction;
+            WasReceived = wasAnswered;
         }
     }
 
     class Account
     {
-        private List<InboundCall> inbound;
-        private List<OutboundCall> outbound;
-        private List<AbandonedCall> abandoned;
-        private TimeManagement inboundTimes = null;
-        private TimeManagement outboundTimes = null;
-        private TimeManagement abandonedTimes = null;
+        private List<ICommunication> communications = new List<ICommunication>();
+        private List<TimeTracker> timeTrackers = new List<TimeTracker>();
 
         public string Name
         {
@@ -203,7 +101,7 @@ namespace ClosingReport
         {
             get
             {
-                return inbound.Count;
+                return communications.Where(comm => comm.Direction == CommDirection.Inbound).Count();
             }
         }
 
@@ -211,7 +109,7 @@ namespace ClosingReport
         {
             get
             {
-                return outbound.Count;
+                return communications.Where(comm => comm.Direction == CommDirection.Outbound).Count();
             }
         }
 
@@ -219,43 +117,7 @@ namespace ClosingReport
         {
             get
             {
-                return abandoned.Count;
-            }
-        }
-
-        public TimeManagement InboundTimes
-        {
-            get
-            {
-                return inboundTimes;
-            }
-            set
-            {
-                inboundTimes = value;
-            }
-        }
-
-        public TimeManagement OutboundTimes
-        {
-            get
-            {
-                return outboundTimes;
-            }
-            set
-            {
-                outboundTimes = value;
-            }
-        }
-
-        public TimeManagement AbandonedTimes
-        {
-            get
-            {
-                return abandonedTimes;
-            }
-            set
-            {
-                abandonedTimes = value;
+                return communications.Where(comm => comm.Direction == CommDirection.Inbound && comm.WasReceived == false).Count();
             }
         }
 
@@ -263,62 +125,36 @@ namespace ClosingReport
         {
             Name = name;
             Codes = codes;
-
-            inbound = new List<InboundCall>();
-            outbound = new List<OutboundCall>();
-            abandoned = new List<AbandonedCall>();
         }
 
-        public void AddCall(InboundCall call)
+        public void AddCommunication(ICommunication comm)
         {
-            inbound.Add(call);
-            if (InboundTimes != null)
+            communications.Add(comm);
+            foreach (var tracker in timeTrackers)
             {
-                InboundTimes.AddTime(call.FirstRingTime);
+                try
+                {
+                    tracker.TrackIfSupported(comm);
+                }
+                catch (Exception e)
+                {
+                    ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Encountered an error trying to add '{comm}' to tracker: {e.Message}");
+                }
             }
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s inbound: {call}");
         }
 
-        public void AddCall(OutboundCall call)
+        public void RegisterTrackers(IEnumerable<TimeTracker> trackers)
         {
-            outbound.Add(call);
-            if (OutboundTimes != null)
-            {
-                OutboundTimes.AddTime(call.FirstRingTime);
-            }
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s outbound: {call}");
-        }
-
-        public void AddCall(AbandonedCall call)
-        {
-            abandoned.Add(call);
-            if (AbandonedTimes != null)
-            {
-                AbandonedTimes.AddTime(call.FirstRingTime);
-            }
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding call to {Name}'s abandoned: {call}");
-        }
-
-        public Stats Statistics()
-        {
-            return new Stats()
-            {
-                AccountName = Name,
-                InboundAverage = TimeManagement.AverageTime(from call in inbound select call.RingDuration),
-                AbandonedAverage = TimeManagement.AverageTime(from call in abandoned select call.CallDuration),
-                TotalInbound = TotalInbound,
-                TotalOutbound = TotalOutbound,
-                TotalAbandoned = TotalAbandoned
-            };
+            timeTrackers.AddRange(trackers);
         }
     }
 
     class Accounts : IEnumerable<Account>
     {
-        private Dictionary<int, Account> accounts;
         private int sentinel;
-        private bool? includeOthers = null;
-
+        private List<TimeTracker> trackers;
+        private Dictionary<int, Account> accounts = new Dictionary<int, Account>();
+        
         public int InboundCount
         {
             get
@@ -359,69 +195,16 @@ namespace ClosingReport
             }
         }
 
-        public TimeManagement InboundTimes
-        {
-            get; private set;
-        }
-
-        public TimeManagement OutboundTimes
-        {
-            get; private set;
-        }
-
-        public TimeManagement AbandonedTimes
-        {
-            get; private set;
-        }
-
-        public bool IncludeOthers
-        {
-            get
-            {
-                if (includeOthers == null)
-                {
-                    string unparsed = ConfigurationManager.AppSettings["IncludeOthers"];
-                    try
-                    {
-                        includeOthers = bool.Parse(unparsed);
-                    }
-                    catch (ArgumentException)
-                    {
-                        ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Could not parse, 'IncludeOthers' from config (read: {unparsed}, defaulting to false");
-                        includeOthers = false;
-                    }
-                }
-
-                return (bool)includeOthers;
-            }
-        }
-
-        public Accounts(int sentinel)
+        public Accounts(int sentinel, List<TimeTracker> trackers)
         {
             this.sentinel = sentinel;
-            accounts = new Dictionary<int, Account>();
-            InboundTimes = new TimeManagement();
-            OutboundTimes = new TimeManagement();
-            AbandonedTimes = new TimeManagement();
+            this.trackers = trackers;
 
             var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
             foreach (AccountsElement elem in cfg.Accounts)
             {
                 var account = new Account(elem.AccountName, elem.AccountCodes);
-
-
-                if (account.Name == "Others" && IncludeOthers)
-                {
-                    account.InboundTimes = (IncludeOthers) ? InboundTimes : new TimeManagement();
-                    account.OutboundTimes = (IncludeOthers) ? OutboundTimes : new TimeManagement();
-                    account.AbandonedTimes = (IncludeOthers) ? AbandonedTimes : new TimeManagement();
-                }
-                else
-                {
-                    account.InboundTimes = InboundTimes;
-                    account.OutboundTimes = OutboundTimes;
-                    account.AbandonedTimes = AbandonedTimes;
-                }
+                account.RegisterTrackers(trackers);
 
                 foreach (var code in elem.AccountCodes)
                 {
@@ -440,12 +223,12 @@ namespace ClosingReport
             }
         }
 
-        public void AddCall<T>(T call) where T : Call
+        public void AddCommunication(ICommunication comm)
         {
             Account account;
             try
             {
-                account = accounts[call.AccountCode];
+                account = accounts[comm.Channel];
             }
             catch (KeyNotFoundException)
             {
@@ -454,49 +237,22 @@ namespace ClosingReport
 
             try
             {
-                account.AddCall((dynamic)call);
-            }
-            catch (ArgumentException)
-            {
-                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Not adding duplicate call: {call}");
+                account.AddCommunication(comm);
             }
             catch (Exception e)
             {
-                ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {call}, got error: {e.Message}");
+                ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {comm}, got error: {e.Message}");
             }
-        }
-
-        public IEnumerable<Stats> Statistics()
-        {
-            foreach (Account account in accounts.Values.Distinct<Account>())
-            {
-                yield return account.Statistics();
-            }
-            yield break;
         }
 
         IEnumerator<Account> IEnumerable<Account>.GetEnumerator()
         {
             return accounts.Values.Distinct<Account>().GetEnumerator();
-            /*
-            foreach (Account account in accounts.Values.Distinct<Account>())
-            {
-                yield return account;
-            }
-            yield break;
-            */
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
             return accounts.Values.Distinct().GetEnumerator();
-            /*
-            foreach (Account account in accounts.Values.Distinct<Account>())
-            {
-                yield return account;
-            }
-            yield break;
-            */
         }
     }
 }

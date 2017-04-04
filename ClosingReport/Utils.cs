@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OxyPlot;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
@@ -201,6 +202,114 @@ namespace ClosingReport
         IEnumerator IEnumerable.GetEnumerator()
         {
             return count.GetEnumerator();
+        }
+    }
+
+    class TimeTracker
+    {
+        private Func<ICommunication, bool> condition;
+        private TimeManagement tracker = new TimeManagement();
+
+        public string Name
+        {
+            get; private set;
+        }
+
+        public TimeTracker(string name, Func<ICommunication, bool> trackingCondition)
+        {
+            Name = name;
+            condition = trackingCondition;
+        }
+
+        public void TrackIfSupported(ICommunication comm)
+        {
+            if (condition(comm))
+            {
+                tracker.AddTime(comm.TimeOfReceipt);
+            }
+        }
+
+        public IEnumerable<DataPoint> GetDataPoints()
+        {
+            foreach (KeyValuePair<TimeSpan, int> pair in tracker)
+            {
+                yield return new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value);
+            }
+
+            yield break;
+        }
+    }
+
+    sealed internal class CommunicationFactories
+    {
+        public static Communication fromInboundRecord(string[] row)
+        {
+            try
+            {
+                DateTime firstRingTime = DateTime.Parse(row[0]);
+                string telephoneNumber = row[1];
+                TimeSpan callDuration = TimeManagement.StampToSpan(row[2]);
+
+                int agentId = ReportRunner.sentinel;
+                int.TryParse(row[3], out agentId);
+
+                int accountCode = ReportRunner.sentinel;
+                int.TryParse(row[4], out accountCode);
+
+                TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
+
+                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, true);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                return comm;
+            }
+            catch (Exception e)
+            {
+                throw new ParseException($"Unable to parse communication from CVS row: {row}. Got error: {e.Message}");
+            }
+        }
+
+        public static Communication fromOutboundRecord(string[] record)
+        {
+            try
+            {
+                DateTime firstRingTime = DateTime.Parse(record[0]);
+                string telephoneNumber = record[1];
+                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
+
+                int agentId = ReportRunner.sentinel;
+                int.TryParse(record[3], out agentId);
+
+                int accountCode = ReportRunner.sentinel;
+                int.TryParse(record[4], out accountCode);
+
+                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                return comm;
+            }
+            catch (Exception e)
+            {
+                throw new ParseException($"Unable to parse call from CVS row: {record}. Got error: {e.Message}");
+            }
+        }
+
+        public static Communication fromAbandonedRecord(string[] record)
+        {
+            try
+            {
+                DateTime firstRingTime = DateTime.Parse(record[0]);
+
+                int accountCode = ReportRunner.sentinel;
+                int.TryParse(record[1], out accountCode);
+
+                TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
+                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                return comm;
+            }
+            catch (Exception e)
+            {
+                throw new ParseException($"Unable to parse call from CVS row: {record}. Got error: {e.Message}");
+            }
         }
     }
 

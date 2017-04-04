@@ -29,30 +29,22 @@ namespace ClosingReport
     {
         public static TraceSource log = new TraceSource("ClosingReport");
         public static int sentinel = Convert.ToInt32(ConfigurationManager.AppSettings["Sentinel"]);
+        private static string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         static void Main(string[] args)
         {
-            Accounts accounts = new Accounts(sentinel);
+            List<TimeTracker> trackers = new List<TimeTracker>()
+            {
+                new TimeTracker("Inbound", (x) => x.Direction == CommDirection.Inbound && x.WasReceived),
+                new TimeTracker("Outbound", (x) => x.Direction == CommDirection.Outbound),
+                new TimeTracker("Abandoned", (x) => x.WasReceived == false)
+            };
 
-            new CallProcessor<InboundCall>(
-                builderMeth: InboundCall.fromRecord,
-                adderMeth: accounts.AddCall<InboundCall>,
-                csvPath: @"C:\inbounds.csv"
-            ).ProcessCalls();
+            Accounts accounts = new Accounts(sentinel, trackers);
 
-            new CallProcessor<OutboundCall>(
-                builderMeth: OutboundCall.fromRecord,
-                adderMeth: accounts.AddCall<OutboundCall>,
-                csvPath: @"C:\outbounds.csv"
-            ).ProcessCalls();
-
-            new CallProcessor<AbandonedCall>(
-                builderMeth: AbandonedCall.fromRecord,
-                adderMeth: accounts.AddCall<AbandonedCall>,
-                csvPath: @"C:\abandons.csv"
-            ).ProcessCalls();
-
-            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            new CommunicationProcessor(builderMeth: CommunicationFactories.fromInboundRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\inbounds.csv").ProcessCalls();
+            new CommunicationProcessor(builderMeth: CommunicationFactories.fromOutboundRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\outbounds.csv").ProcessCalls();
+            new CommunicationProcessor(builderMeth: CommunicationFactories.fromAbandonedRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\abandons.csv").ProcessCalls();
 
             string barChartDestination = Path.Combine(desktop, @"barChart.png");
             IView barChart = new BarChartView();
@@ -71,14 +63,14 @@ namespace ClosingReport
         }
     }
 
-    class CallProcessor<T> where T : Call
+    class CommunicationProcessor
     {
-        private Func<string[], T> builderMeth;
-        private Action<T> adderMeth;
+        private Func<string[], ICommunication> builderMeth;
+        private Action<ICommunication> adderMeth;
         private string csvPath;
         private bool skipHeader;
 
-        public CallProcessor(Func<string[], T> builderMeth, Action<T> adderMeth, string csvPath, bool? skipHeader=null)
+        public CommunicationProcessor(Func<string[], ICommunication> builderMeth, Action<ICommunication> adderMeth, string csvPath, bool? skipHeader=null)
         {
             this.builderMeth = builderMeth;
             this.adderMeth = adderMeth;
@@ -98,7 +90,7 @@ namespace ClosingReport
         {
             foreach (string[] record in IterRecords())
             {
-                T call = builderMeth(record);
+                ICommunication call = builderMeth(record);
                 adderMeth(call);
             }
         }
