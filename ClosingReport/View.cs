@@ -14,8 +14,8 @@ namespace ClosingReport
 {
     interface IView
     {
-        void AddAccounts(Accounts accounts);
-        void SaveToFile(string path);       
+        void AddViewable(TimeTracker tracker);
+        void SaveToFile(string path);
     }
 
     class BarChartView : IView
@@ -26,6 +26,8 @@ namespace ClosingReport
         {
             get; set;
         }
+
+        private List<OxyPlot.Series.BarSeries> Series;
 
         private OxyPlot.Series.BarSeries InboundSeries
         {
@@ -57,6 +59,7 @@ namespace ClosingReport
             Model = new PlotModel { Title = "Closing Report" };
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.BottomRight;
+            Series = new List<OxyPlot.Series.BarSeries>();
             InboundSeries = new OxyPlot.Series.BarSeries { Title = "Inbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
             OutboundSeries = new OxyPlot.Series.BarSeries { Title = "Outbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
             AbandonedSeries = new OxyPlot.Series.BarSeries { Title = "Abandoned", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
@@ -70,16 +73,29 @@ namespace ClosingReport
             };
         }
 
-        public void AddAccounts(Accounts accounts)
+        public static IEnumerable<OxyPlot.Series.BarSeries> AddAccounts(Accounts accounts)
         {
+            var inbound = new OxyPlot.Series.BarSeries { Title = "Inbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
+            var outbound = new OxyPlot.Series.BarSeries { Title = "Outbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
+            var abandoned = new OxyPlot.Series.BarSeries { Title = "Abandoned", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
 
             foreach (Account account in accounts)
             {
-                InboundSeries.Items.Add(new BarItem() { Value = account.TotalInbound });
-                OutboundSeries.Items.Add(new BarItem() { Value = account.TotalOutbound });
-                AbandonedSeries.Items.Add(new BarItem() { Value = account.TotalAbandoned });
-                CategoryAxis.Labels.Add(account.Name);
+                inboundSeries.Items.Add(new BarItem() { Value = account.TotalInbound });
+                outboundSeries.Items.Add(new BarItem() { Value = account.TotalOutbound });
+                abandonedSeries.Items.Add(new BarItem() { Value = account.TotalAbandoned });
+                //CategoryAxis.Labels.Add(account.Name);  // TODO: Not accounted for in interface. How do I get this from model to view?
+                // For now, maybe just subclass the different views. I can re-combine them later, maybe-possibly-i-hope-so.
             }
+
+            yield return inbound;
+            yield return outbound;
+            yield return abandoned;
+            yield break;
+        }
+
+        public void AddViewable(TimeTracker tracker)
+        {
         }
 
         private void Render()
@@ -119,17 +135,7 @@ namespace ClosingReport
             get; set;
         }
 
-        private OxyPlot.Series.LineSeries InboundSeries
-        {
-            get; set;
-        }
-
-        private OxyPlot.Series.LineSeries OutboundSeries
-        {
-            get; set;
-        }
-
-        private OxyPlot.Series.LineSeries AbandonedSeries
+        private List<OxyPlot.Series.LineSeries> Series
         {
             get; set;
         }
@@ -147,6 +153,7 @@ namespace ClosingReport
         public LineChartView()
         {
             Model = new PlotModel() { Title = "Calls by Time" };
+            Series = new List<OxyPlot.Series.LineSeries>();
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.TopRight;
             FrequencyAxis = new OxyPlot.Axes.LinearAxis() { Position = AxisPosition.Left };
@@ -157,8 +164,12 @@ namespace ClosingReport
                 MaximumPadding = 0.06,
                 AbsoluteMinimum = 0
             };
+        }
 
-            InboundSeries = new OxyPlot.Series.LineSeries()
+        // TODO: I'll be fixing this; temporary abstraction, I promise
+        private static OxyPlot.Series.LineSeries MakeInboundSeries()
+        {
+            return new OxyPlot.Series.LineSeries()
             {
                 Title = "Inbound",
                 Color = OxyColors.SkyBlue,
@@ -168,7 +179,11 @@ namespace ClosingReport
                 MarkerFill = OxyColors.SkyBlue,
                 MarkerStrokeThickness = 1.5
             };
-            OutboundSeries = new OxyPlot.Series.LineSeries()
+        }
+
+        private static OxyPlot.Series.LineSeries MakeOutboundSeries()
+        {
+            return new OxyPlot.Series.LineSeries()
             {
                 Title = "Outbound",
                 Color = OxyColors.LawnGreen,
@@ -178,7 +193,11 @@ namespace ClosingReport
                 MarkerFill = OxyColors.LawnGreen,
                 MarkerStrokeThickness = 1.5
             };
-            AbandonedSeries = new OxyPlot.Series.LineSeries()
+        }
+
+        private static OxyPlot.Series.LineSeries MakeAbandonedSeries()
+        {
+            return new OxyPlot.Series.LineSeries()
             {
                 Title = "Abandoned",
                 Color = OxyColors.OrangeRed,
@@ -188,30 +207,38 @@ namespace ClosingReport
                 MarkerFill = OxyColors.OrangeRed,
                 MarkerStrokeThickness = 1.5
             };
-
         }
 
-        public void AddAccounts(Accounts accounts)
+        public void AddViewable(TimeTracker tracker)
         {
-            foreach (KeyValuePair<TimeSpan, int> pair in accounts.InboundTimes)
+            OxyPlot.Series.LineSeries series;
+            switch (tracker.Name)
             {
-                InboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+                case "Inbound":
+                    series = MakeInboundSeries();
+                    break;
+                case "Outbound":
+                    series = MakeOutboundSeries();
+                    break;
+                default:
+                    series = MakeAbandonedSeries();
+                    break;
             }
-            foreach (KeyValuePair<TimeSpan, int> pair in accounts.OutboundTimes)
+
+            foreach (var point in tracker.GetDataPoints())
             {
-                OutboundSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
+                series.Points.Add(point);
             }
-            foreach (KeyValuePair<TimeSpan, int> pair in accounts.AbandonedTimes)
-            {
-                AbandonedSeries.Points.Add(new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value));
-            }
+
+            Series.Add(series);
         }
 
         private void Render()
         {
-            Model.Series.Add(InboundSeries);
-            Model.Series.Add(OutboundSeries);
-            Model.Series.Add(AbandonedSeries);
+            foreach (var series in Series)
+            {
+                Model.Series.Add(series);
+            }
             Model.Axes.Add(TimeAxis);
             Model.Axes.Add(FrequencyAxis);
             rendered = true;

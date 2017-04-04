@@ -17,13 +17,13 @@ namespace ClosingReport
         public int TotalAbandoned;
     }
 
-    enum CommDirection
+    public enum CommDirection
     {
         Inbound,
         Outbound
     }
 
-    interface ICommunication
+    public interface ICommunication
     {
         CommDirection Direction
         {
@@ -40,14 +40,25 @@ namespace ClosingReport
             get;
         }
 
-        object Channel
+        object GroupId
         {
             get;
         }
     }
 
-    class Communication : ICommunication
+    public class Communication : ICommunication
     {
+
+        public DateTime TimeOfReceipt
+        {
+            get;
+        }
+
+        public object GroupId
+        {
+            get;
+        }
+
         public CommDirection Direction
         {
             get;
@@ -58,31 +69,21 @@ namespace ClosingReport
             get;
         }
 
-        public DateTime TimeOfReceipt
-        {
-            get;
-        }
-
-        public object Channel
-        {
-            get;
-        }
-
         public override string ToString()
         {
-            return $"Communication(FirstRingTime: {TimeOfReceipt}, AccountCode: {Channel}, Direction: {Direction}, WasAnswered: {WasReceived})";
+            return $"Communication(TimeOfReceipt: {TimeOfReceipt}, GroupId: {GroupId}, Direction: {Direction}, WasReceived: {WasReceived})";
         }
 
-        public Communication(DateTime firstRingTime, int accountCode, CommDirection direction, bool wasAnswered)
+        public Communication(DateTime timeOfReceipt, object groupId, CommDirection direction, bool wasReceived)
         {
-            TimeOfReceipt = firstRingTime;
-            Channel = accountCode;
+            TimeOfReceipt = timeOfReceipt;
+            GroupId = groupId;
             Direction = direction;
-            WasReceived = wasAnswered;
+            WasReceived = wasReceived;
         }
     }
 
-    class Account
+    public class Account
     {
         private List<ICommunication> communications = new List<ICommunication>();
         private List<TimeTracker> timeTrackers = new List<TimeTracker>();
@@ -92,7 +93,7 @@ namespace ClosingReport
             get; set;
         }
 
-        public int[] Codes
+        public int[] GroupIds // GroupId
         {
             get; set;
         }
@@ -121,10 +122,10 @@ namespace ClosingReport
             }
         }
 
-        public Account(string name, int[] codes)
+        public Account(string name, int[] groupIds)
         {
             Name = name;
-            Codes = codes;
+            GroupIds = groupIds;
         }
 
         public void AddCommunication(ICommunication comm)
@@ -149,11 +150,11 @@ namespace ClosingReport
         }
     }
 
-    class Accounts : IEnumerable<Account>
+    public class Accounts : IEnumerable<Account>
     {
         private int sentinel;
         private List<TimeTracker> trackers;
-        private Dictionary<int, Account> accounts = new Dictionary<int, Account>();
+        private Dictionary<object, Account> accounts = new Dictionary<object, Account>();
         
         public int InboundCount
         {
@@ -208,7 +209,7 @@ namespace ClosingReport
 
                 foreach (var code in elem.AccountCodes)
                 {
-                    if (!accounts.Keys.Contains<int>(code))
+                    if (!accounts.Keys.Contains(code))
                     {
                         accounts[code] = account;
                         ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding account, '{account.Name}' with code, '{code}'");
@@ -228,7 +229,7 @@ namespace ClosingReport
             Account account;
             try
             {
-                account = accounts[comm.Channel];
+                account = accounts[comm.GroupId];
             }
             catch (KeyNotFoundException)
             {

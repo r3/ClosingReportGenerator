@@ -1,4 +1,6 @@
-﻿using System;
+﻿using OxyPlot.Series;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
@@ -35,31 +37,78 @@ namespace ClosingReport
         {
             List<TimeTracker> trackers = new List<TimeTracker>()
             {
-                new TimeTracker("Inbound", (x) => x.Direction == CommDirection.Inbound && x.WasReceived),
-                new TimeTracker("Outbound", (x) => x.Direction == CommDirection.Outbound),
-                new TimeTracker("Abandoned", (x) => x.WasReceived == false)
+                new TimeTracker(name: "Inbound", trackingCondition: (x) => x.Direction == CommDirection.Inbound && x.WasReceived),
+                new TimeTracker(name: "Outbound", trackingCondition: (x) => x.Direction == CommDirection.Outbound),
+                new TimeTracker(name: "Abandoned", trackingCondition: (x) => x.WasReceived == false)
             };
 
             Accounts accounts = new Accounts(sentinel, trackers);
 
-            new CommunicationProcessor(builderMeth: CommunicationFactories.fromInboundRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\inbounds.csv").ProcessCalls();
-            new CommunicationProcessor(builderMeth: CommunicationFactories.fromOutboundRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\outbounds.csv").ProcessCalls();
-            new CommunicationProcessor(builderMeth: CommunicationFactories.fromAbandonedRecord, adderMeth: accounts.AddCommunication, csvPath: @"C:\abandons.csv").ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, @"C:\inbounds.csv").ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, @"C:\outbounds.csv").ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
+
+            //var accountsAdaptor = new ModelViewAdaptor<Accounts, IEnumerable<BarSeries>>(accounts, 
 
             string barChartDestination = Path.Combine(desktop, @"barChart.png");
             IView barChart = new BarChartView();
-            barChart.AddAccounts(accounts);
+            //barChart.AddAccounts(accounts);
             barChart.SaveToFile(barChartDestination);
 
             string lineChartDestination = Path.Combine(desktop, @"lineChart.png");
             IView lineChart = new LineChartView();
-            lineChart.AddAccounts(accounts);
+            //lineChart.AddAccounts(accounts);
             lineChart.SaveToFile(lineChartDestination);
 
             string htmlDestination = Path.Combine(desktop, @"view.html");
             IView htmlView = new HtmlView();
-            htmlView.AddAccounts(accounts);
+            //htmlView.AddAccounts(accounts);
             htmlView.SaveToFile(htmlDestination);
+        }
+    }
+
+    interface IModelViewAdaptor<TModel, TSeries> where TSeries : IEnumerable<CategorizedSeries>
+    {
+        Func<TModel, IEnumerable<TSeries>> MakeSeries
+        {
+            get;
+            set;
+        }
+    }
+
+    class ModelViewAdaptor<TModel, TSeries> : IModelViewAdaptor<TModel, TSeries>, IEnumerable<TSeries>
+        where TSeries : IEnumerable<CategorizedSeries>
+    {
+        private TModel Model
+        {
+            get; set;
+        }
+
+        public Func<TModel, IEnumerable<TSeries>> MakeSeries
+        {
+            get;
+            set;
+        }
+
+        public ModelViewAdaptor(TModel model, Func<TModel, IEnumerable<TSeries>> seriesConstructor)
+        {
+            Model = model;
+            MakeSeries = seriesConstructor;
+        }
+
+        public IEnumerator<TSeries> GetEnumerator()
+        {
+            foreach (var series in MakeSeries(Model))
+            {
+                yield return series;
+            }
+
+            yield break;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 

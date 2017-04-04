@@ -8,7 +8,8 @@ using System.Linq;
 
 namespace ClosingReport
 {
-    public class TimeManagement : IEnumerable<KeyValuePair<TimeSpan, int>>
+    // Create utility method and combine tracking with TimeTracker
+    public static class TimeManagement
     {
         public const int HOURS_IN_DAY = 24;
         public const int MINUTES_IN_HOUR = 60;
@@ -18,8 +19,6 @@ namespace ClosingReport
         private static int? increment = null;
         private static TimeSpan? openingTime = null;
         private static TimeSpan? closingTime = null;
-
-        private SortedDictionary<TimeSpan, int> count;
 
         public static int Increment
         {
@@ -167,31 +166,54 @@ namespace ClosingReport
 
             return new TimeSpan(hrs, mins, secs);
         }
+    }
 
-        public TimeManagement()
+    public class TimeTracker : IEnumerable<KeyValuePair<TimeSpan, int>>
+    {
+        private Func<ICommunication, bool> isTrackable;
+        private SortedDictionary<TimeSpan, int> count = new SortedDictionary<TimeSpan, int>();
+
+        public string Name
         {
-            TimeSpan index = OpeningTime;
-            TimeSpan incrementAsSpan = new TimeSpan(hours: 0, minutes: Increment, seconds: 0);
+            get; private set;
+        }
 
-            count = new SortedDictionary<TimeSpan, int>();
-            while (index < ClosingTime)
-            {
-                count[index] = 0;
-                index += incrementAsSpan;
-            }
+        public TimeTracker(string name, Func<ICommunication, bool> trackingCondition)
+        {
+            Name = name;
+            isTrackable = trackingCondition;
         }
 
         public void AddTime(DateTime time)
         {
-            TimeSpan rounded = NearestIncrement(time);
+            TimeSpan rounded = TimeManagement.NearestIncrement(time);
 
-            if (rounded < OpeningTime || rounded > ClosingTime)
+            if (rounded < TimeManagement.OpeningTime || rounded > TimeManagement.ClosingTime)
             {
-                throw new ArgumentException($"Encountered time outside of opening ({OpeningTime}) and closing ({ClosingTime}) time: {time}");
+                throw new ArgumentException($"Encountered time outside of opening ({TimeManagement.OpeningTime}) and closing ({TimeManagement.ClosingTime}) time: {time}");
             }
 
             count[rounded]++;
             ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Added time, {time} to tracking as {rounded}. Count is now {count[rounded]}.");
+        }
+
+        public void TrackIfSupported(ICommunication comm)
+        {
+            if (isTrackable(comm))
+            {
+                TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
+                count[rounded]++;
+            }
+        }
+
+        public IEnumerable<DataPoint> GetDataPoints()
+        {
+            foreach (KeyValuePair<TimeSpan, int> pair in count)
+            {
+                yield return new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value);
+            }
+
+            yield break;
         }
 
         public IEnumerator<KeyValuePair<TimeSpan, int>> GetEnumerator()
@@ -205,44 +227,9 @@ namespace ClosingReport
         }
     }
 
-    class TimeTracker
+    public static class CommunicationFactories
     {
-        private Func<ICommunication, bool> condition;
-        private TimeManagement tracker = new TimeManagement();
-
-        public string Name
-        {
-            get; private set;
-        }
-
-        public TimeTracker(string name, Func<ICommunication, bool> trackingCondition)
-        {
-            Name = name;
-            condition = trackingCondition;
-        }
-
-        public void TrackIfSupported(ICommunication comm)
-        {
-            if (condition(comm))
-            {
-                tracker.AddTime(comm.TimeOfReceipt);
-            }
-        }
-
-        public IEnumerable<DataPoint> GetDataPoints()
-        {
-            foreach (KeyValuePair<TimeSpan, int> pair in tracker)
-            {
-                yield return new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value);
-            }
-
-            yield break;
-        }
-    }
-
-    sealed internal class CommunicationFactories
-    {
-        public static Communication fromInboundRecord(string[] row)
+        public static ICommunication fromInboundRecord(string[] row)
         {
             try
             {
@@ -268,7 +255,7 @@ namespace ClosingReport
             }
         }
 
-        public static Communication fromOutboundRecord(string[] record)
+        public static ICommunication fromOutboundRecord(string[] record)
         {
             try
             {
@@ -282,7 +269,7 @@ namespace ClosingReport
                 int accountCode = ReportRunner.sentinel;
                 int.TryParse(record[4], out accountCode);
 
-                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true);
+                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
@@ -292,7 +279,7 @@ namespace ClosingReport
             }
         }
 
-        public static Communication fromAbandonedRecord(string[] record)
+        public static ICommunication fromAbandonedRecord(string[] record)
         {
             try
             {
@@ -302,7 +289,7 @@ namespace ClosingReport
                 int.TryParse(record[1], out accountCode);
 
                 TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
-                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false);
+                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
