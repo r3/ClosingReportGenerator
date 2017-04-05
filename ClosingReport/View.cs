@@ -91,7 +91,7 @@ namespace ClosingReport
     {
         private bool rendered = false;
 
-        private TimeTrackerLineChartAdapter Adapter
+        private TimeTrackersLineChartAdapter Adapter
         {
             get; set;
         }
@@ -111,7 +111,7 @@ namespace ClosingReport
             get; set;
         }
 
-        public LineChartView(TimeTrackerLineChartAdapter adapter)
+        public LineChartView(TimeTrackersLineChartAdapter adapter)
         {
             Adapter = adapter;
             Model = new PlotModel() { Title = "Calls by Time" };

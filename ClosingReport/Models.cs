@@ -7,16 +7,6 @@ using System.Collections;
 
 namespace ClosingReport
 {
-    struct Stats
-    {
-        public string AccountName;
-        public TimeSpan InboundAverage;
-        public TimeSpan AbandonedAverage;
-        public int TotalInbound;
-        public int TotalOutbound;
-        public int TotalAbandoned;
-    }
-
     public enum CommDirection
     {
         Inbound,
@@ -83,7 +73,7 @@ namespace ClosingReport
         }
     }
 
-    public class Account
+    public class Account : IEnumerable<ICommunication>
     {
         private List<ICommunication> communications = new List<ICommunication>();
         private List<TimeTracker> timeTrackers = new List<TimeTracker>();
@@ -93,33 +83,9 @@ namespace ClosingReport
             get; set;
         }
 
-        public int[] GroupIds // GroupId
+        public int[] GroupIds
         {
             get; set;
-        }
-
-        public int TotalInbound
-        {
-            get
-            {
-                return communications.Where(comm => comm.Direction == CommDirection.Inbound).Count();
-            }
-        }
-
-        public int TotalOutbound
-        {
-            get
-            {
-                return communications.Where(comm => comm.Direction == CommDirection.Outbound).Count();
-            }
-        }
-
-        public int TotalAbandoned
-        {
-            get
-            {
-                return communications.Where(comm => comm.Direction == CommDirection.Inbound && comm.WasReceived == false).Count();
-            }
         }
 
         public Account(string name, int[] groupIds)
@@ -130,17 +96,27 @@ namespace ClosingReport
 
         public void AddCommunication(ICommunication comm)
         {
-            communications.Add(comm);
+            bool tracked = false;
             foreach (var tracker in timeTrackers)
             {
                 try
                 {
-                    tracker.TrackIfSupported(comm);
+                    bool tracksComm = tracker.TrackIfSupported(comm);
+                    if (tracked)
+                    {
+                        communications.Add(comm);
+                        tracked = true;
+                    }
                 }
                 catch (Exception e)
                 {
-                    ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Encountered an error trying to add '{comm}' to tracker: {e.Message}");
+                    ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Encountered an error trying to add '{comm}' to tracker: {e.Message}");
                 }
+            }
+
+            if (!tracked)
+            {
+                throw new ArgumentException($"Communication is unsupported by any trackers: {comm}");
             }
         }
 
@@ -148,55 +124,70 @@ namespace ClosingReport
         {
             timeTrackers.AddRange(trackers);
         }
+
+        public IEnumerator<ICommunication> GetEnumerator()
+        {
+            return communications.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return communications.GetEnumerator();
+        }
     }
 
-    public class Accounts : IEnumerable<Account>
+    public class Accounts : IEnumerable<Account>, IDictionary<object, TimeTracker>
     {
         private int sentinel;
-        private List<TimeTracker> trackers;
+        private Dictionary<object, TimeTracker> trackers;
         private Dictionary<object, Account> accounts = new Dictionary<object, Account>();
-        
-        public int InboundCount
+
+        public ICollection<object> Keys
         {
             get
             {
-                return accounts.Values.Select(x => x.TotalInbound).Sum();
+                return ((IDictionary<object, TimeTracker>)trackers).Keys;
             }
         }
 
-        public int OutboundCount
+        public ICollection<TimeTracker> Values
         {
             get
             {
-                return accounts.Values.Select(x => x.TotalOutbound).Sum();
+                return ((IDictionary<object, TimeTracker>)trackers).Values;
             }
         }
 
-        public int AbandonedCount
+        public int Count
         {
             get
             {
-                return accounts.Values.Select(x => x.TotalAbandoned).Sum();
+                return ((IDictionary<object, TimeTracker>)trackers).Count;
             }
         }
 
-        public int TotalCount
+        public bool IsReadOnly
         {
             get
             {
-                return InboundCount + AbandonedCount;
+                return ((IDictionary<object, TimeTracker>)trackers).IsReadOnly;
             }
         }
 
-        public float AbandonedRate
+        public TimeTracker this[object key]
         {
             get
             {
-                return (TotalCount != 0) ? AbandonedCount / TotalCount : 0;
+                return ((IDictionary<object, TimeTracker>)trackers)[key];
+            }
+
+            set
+            {
+                ((IDictionary<object, TimeTracker>)trackers)[key] = value;
             }
         }
 
-        public Accounts(int sentinel, List<TimeTracker> trackers)
+        public Accounts(int sentinel, Dictionary<object, TimeTracker> trackers)
         {
             this.sentinel = sentinel;
             this.trackers = trackers;
@@ -205,7 +196,7 @@ namespace ClosingReport
             foreach (AccountsElement elem in cfg.Accounts)
             {
                 var account = new Account(elem.AccountName, elem.AccountCodes);
-                account.RegisterTrackers(trackers);
+                account.RegisterTrackers(trackers.Values);
 
                 foreach (var code in elem.AccountCodes)
                 {
@@ -246,14 +237,64 @@ namespace ClosingReport
             }
         }
 
-        IEnumerator<Account> IEnumerable<Account>.GetEnumerator()
+        public IEnumerator<Account> GetEnumerator()
         {
-            return accounts.Values.Distinct<Account>().GetEnumerator();
+            return accounts.Values.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return accounts.Values.Distinct().GetEnumerator();
+            return accounts.Values.GetEnumerator();
+        }
+
+        public bool ContainsKey(object key)
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).ContainsKey(key);
+        }
+
+        public void Add(object key, TimeTracker value)
+        {
+            ((IDictionary<object, TimeTracker>)trackers).Add(key, value);
+        }
+
+        public bool Remove(object key)
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).Remove(key);
+        }
+
+        public bool TryGetValue(object key, out TimeTracker value)
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).TryGetValue(key, out value);
+        }
+
+        public void Add(KeyValuePair<object, TimeTracker> item)
+        {
+            ((IDictionary<object, TimeTracker>)trackers).Add(item);
+        }
+
+        public void Clear()
+        {
+            ((IDictionary<object, TimeTracker>)trackers).Clear();
+        }
+
+        public bool Contains(KeyValuePair<object, TimeTracker> item)
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).Contains(item);
+        }
+
+        public void CopyTo(KeyValuePair<object, TimeTracker>[] array, int arrayIndex)
+        {
+            ((IDictionary<object, TimeTracker>)trackers).CopyTo(array, arrayIndex);
+        }
+
+        public bool Remove(KeyValuePair<object, TimeTracker> item)
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).Remove(item);
+        }
+
+        IEnumerator<KeyValuePair<object, TimeTracker>> IEnumerable<KeyValuePair<object, TimeTracker>>.GetEnumerator()
+        {
+            return ((IDictionary<object, TimeTracker>)trackers).GetEnumerator();
         }
     }
 }

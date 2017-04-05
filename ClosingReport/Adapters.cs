@@ -8,8 +8,17 @@ using System.Linq;
 
 namespace ClosingReport
 {
+    struct Stats
+    {
+        public string AccountName;
+        public TimeSpan InboundAverage;
+        public TimeSpan AbandonedAverage;
+        public int TotalInbound;
+        public int TotalOutbound;
+        public int TotalAbandoned;
+    }
+
     class ModelChartAdapter<TModel, TSeries> : IEnumerable<TSeries>
-        where TSeries : Series
     {
         protected TModel Model
         {
@@ -45,13 +54,74 @@ namespace ClosingReport
         }
     }
 
+    class AccountsHtmlAdapter : ModelChartAdapter<Accounts, Stats>
+    {
+        public int TotalCount
+        {
+            get
+            {
+                return InboundCount + Model["Abandoned"].Count;
+            }
+        }
+
+        public int InboundCount
+        {
+            get
+            {
+                return Model["Inbound"].Count;
+            }
+        }
+
+        public int OutboundCount
+        {
+            get
+            {
+                return Model["Outbound"].Count;
+            }
+        }
+
+        public float AbandonedRate
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public AccountsHtmlAdapter(Accounts model, Func<Accounts, IEnumerable<Stats>> seriesConstructor)
+            : base(model, seriesConstructor)
+        {
+        }
+
+        public static IEnumerable<Stats> SeriesCtor(Accounts accounts)
+        {
+            throw new NotImplementedException();
+            foreach (Account account in accounts)
+            {
+                yield return new Stats
+                {
+                    // TODO: Fix these;
+                    AccountName = account.Name,
+                    InboundAverage = new TimeSpan(),
+                    AbandonedAverage = new TimeSpan(),
+                    TotalInbound = 0,
+                    TotalOutbound = 0,
+                    TotalAbandoned = 0 
+                };
+            }
+
+            yield break;
+        }
+    }
+
     class AccountsBarChartAdapter : ModelChartAdapter<Accounts, BarSeries>
     {
         public IEnumerable<string> Labels
         {
             get
             {
-                return Model.Select((x) => x.Name);
+                return new List<string>() { "" };
+                //return Model.Select((x) => x.Name);
             }
         }
 
@@ -68,9 +138,11 @@ namespace ClosingReport
 
             foreach (Account account in accounts)
             {
-                inbound.Items.Add(new BarItem() { Value = account.TotalInbound });
-                outbound.Items.Add(new BarItem() { Value = account.TotalOutbound });
-                abandoned.Items.Add(new BarItem() { Value = account.TotalAbandoned });
+                // TODO: FIX DIS
+                throw new NotImplementedException();
+                inbound.Items.Add(new BarItem() { Value = 0 });
+                outbound.Items.Add(new BarItem() { Value = 0 });
+                abandoned.Items.Add(new BarItem() { Value = 0 });
             }
 
             yield return inbound;
@@ -80,9 +152,9 @@ namespace ClosingReport
         }
     }
 
-    class TimeTrackerLineChartAdapter : ModelChartAdapter<IEnumerable<TimeTracker>, LineSeries>
+    class TimeTrackersLineChartAdapter : ModelChartAdapter<IEnumerable<TimeTracker>, LineSeries>
     {
-        public TimeTrackerLineChartAdapter(IEnumerable<TimeTracker> model, Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> seriesConstructor)
+        public TimeTrackersLineChartAdapter(IEnumerable<TimeTracker> model, Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> seriesConstructor)
             : base(model, seriesConstructor)
         {
         }

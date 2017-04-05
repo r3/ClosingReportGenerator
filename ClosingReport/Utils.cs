@@ -170,7 +170,15 @@ namespace ClosingReport
     public class TimeTracker : IEnumerable<KeyValuePair<TimeSpan, int>>
     {
         private Func<ICommunication, bool> isTrackable;
-        private SortedDictionary<TimeSpan, int> count = new SortedDictionary<TimeSpan, int>();
+        private SortedDictionary<TimeSpan, int> counts = new SortedDictionary<TimeSpan, int>();
+
+        public int Count
+        {
+            get
+            {
+                return counts.Values.Sum();
+            }
+        }
 
         public string Name
         {
@@ -192,27 +200,30 @@ namespace ClosingReport
                 throw new ArgumentException($"Encountered time outside of opening ({TimeManagement.OpeningTime}) and closing ({TimeManagement.ClosingTime}) time: {time}");
             }
 
-            count[rounded]++;
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Added time, {time} to tracking as {rounded}. Count is now {count[rounded]}.");
+            counts[rounded]++;
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Added time, {time} to tracking as {rounded}. Count is now {counts[rounded]}.");
         }
 
-        public void TrackIfSupported(ICommunication comm)
+        public bool TrackIfSupported(ICommunication comm)
         {
             if (isTrackable(comm))
             {
                 TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
-                count[rounded]++;
+                counts[rounded]++;
+                return true;
             }
+
+            return false;
         }
 
         public IEnumerator<KeyValuePair<TimeSpan, int>> GetEnumerator()
         {
-            return count.GetEnumerator();
+            return counts.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return count.GetEnumerator();
+            return counts.GetEnumerator();
         }
     }
 

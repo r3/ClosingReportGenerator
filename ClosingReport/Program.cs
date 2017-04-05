@@ -35,11 +35,11 @@ namespace ClosingReport
 
         static void Main(string[] args)
         {
-            List<TimeTracker> trackers = new List<TimeTracker>()
+            Dictionary<object, TimeTracker> trackers = new Dictionary<object, TimeTracker>()
             {
-                new TimeTracker(name: "Inbound", trackingCondition: (x) => x.Direction == CommDirection.Inbound && x.WasReceived),
-                new TimeTracker(name: "Outbound", trackingCondition: (x) => x.Direction == CommDirection.Outbound),
-                new TimeTracker(name: "Abandoned", trackingCondition: (x) => x.WasReceived == false)
+                { "Inbound", new TimeTracker(name: "Inbound", trackingCondition: (x) => x.Direction == CommDirection.Inbound && x.WasReceived) },
+                { "Outbound",  new TimeTracker(name: "Outbound", trackingCondition: (x) => x.Direction == CommDirection.Outbound) },
+                { "Abandoned", new TimeTracker(name: "Abandoned", trackingCondition: (x) => x.WasReceived == false) }
             };
 
             Accounts accounts = new Accounts(sentinel, trackers);
@@ -49,7 +49,7 @@ namespace ClosingReport
             new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
 
             BarChartView foo = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
-            LineChartView bar = new LineChartView(new TimeTrackerLineChartAdapter(trackers, TimeTrackerLineChartAdapter.SeriesCtor));
+            LineChartView bar = new LineChartView(new TimeTrackersLineChartAdapter(trackers.Values, TimeTrackersLineChartAdapter.SeriesCtor));
         }
     }
 
