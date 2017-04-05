@@ -8,7 +8,6 @@ using System.Linq;
 
 namespace ClosingReport
 {
-    // Create utility method and combine tracking with TimeTracker
     public static class TimeManagement
     {
         public const int HOURS_IN_DAY = 24;
@@ -204,16 +203,6 @@ namespace ClosingReport
                 TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
                 count[rounded]++;
             }
-        }
-
-        public IEnumerable<DataPoint> GetDataPoints()
-        {
-            foreach (KeyValuePair<TimeSpan, int> pair in count)
-            {
-                yield return new DataPoint(OxyPlot.Axes.TimeSpanAxis.ToDouble(pair.Key), pair.Value);
-            }
-
-            yield break;
         }
 
         public IEnumerator<KeyValuePair<TimeSpan, int>> GetEnumerator()

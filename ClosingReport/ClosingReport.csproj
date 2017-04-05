@@ -90,6 +90,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Adapters.cs" />
     <Compile Include="View.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="Models.cs" />

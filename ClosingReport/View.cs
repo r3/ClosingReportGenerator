@@ -12,57 +12,40 @@ using RazorEngine.Configuration;
 
 namespace ClosingReport
 {
-    interface IView
-    {
-        void AddViewable(TimeTracker tracker);
-        void SaveToFile(string path);
-    }
-
-    class BarChartView : IView
+    class BarChartView
     {
         private bool rendered = false;
 
+        private AccountsBarChartAdapter Adapter
+        {
+            get;
+            set;
+        }
+
         private PlotModel Model
         {
-            get; set;
-        }
-
-        private List<OxyPlot.Series.BarSeries> Series;
-
-        private OxyPlot.Series.BarSeries InboundSeries
-        {
-            get; set;
-        }
-
-        private OxyPlot.Series.BarSeries OutboundSeries
-        {
-            get; set;
-        }
-
-        private OxyPlot.Series.BarSeries AbandonedSeries
-        {
-            get; set;
+            get;
+            set;
         }
 
         private OxyPlot.Axes.CategoryAxis CategoryAxis
         {
-            get; set;
+            get;
+            set;
         }
 
         private OxyPlot.Axes.LinearAxis ValueAxis
         {
-            get; set;
+            get;
+            set;
         }
 
-        public BarChartView()
+        public BarChartView(AccountsBarChartAdapter adapter)
         {
+            Adapter = adapter;
             Model = new PlotModel { Title = "Closing Report" };
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.BottomRight;
-            Series = new List<OxyPlot.Series.BarSeries>();
-            InboundSeries = new OxyPlot.Series.BarSeries { Title = "Inbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
-            OutboundSeries = new OxyPlot.Series.BarSeries { Title = "Outbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
-            AbandonedSeries = new OxyPlot.Series.BarSeries { Title = "Abandoned", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
             CategoryAxis = new OxyPlot.Axes.CategoryAxis() { Position = AxisPosition.Left };
             ValueAxis = new OxyPlot.Axes.LinearAxis()
             {
@@ -73,36 +56,13 @@ namespace ClosingReport
             };
         }
 
-        public static IEnumerable<OxyPlot.Series.BarSeries> AddAccounts(Accounts accounts)
-        {
-            var inbound = new OxyPlot.Series.BarSeries { Title = "Inbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
-            var outbound = new OxyPlot.Series.BarSeries { Title = "Outbound", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
-            var abandoned = new OxyPlot.Series.BarSeries { Title = "Abandoned", StrokeColor = OxyColors.Black, StrokeThickness = 1 };
-
-            foreach (Account account in accounts)
-            {
-                inboundSeries.Items.Add(new BarItem() { Value = account.TotalInbound });
-                outboundSeries.Items.Add(new BarItem() { Value = account.TotalOutbound });
-                abandonedSeries.Items.Add(new BarItem() { Value = account.TotalAbandoned });
-                //CategoryAxis.Labels.Add(account.Name);  // TODO: Not accounted for in interface. How do I get this from model to view?
-                // For now, maybe just subclass the different views. I can re-combine them later, maybe-possibly-i-hope-so.
-            }
-
-            yield return inbound;
-            yield return outbound;
-            yield return abandoned;
-            yield break;
-        }
-
-        public void AddViewable(TimeTracker tracker)
-        {
-        }
-
         private void Render()
         {
-            Model.Series.Add(InboundSeries);
-            Model.Series.Add(OutboundSeries);
-            Model.Series.Add(AbandonedSeries);
+            foreach (OxyPlot.Series.BarSeries series in Adapter)
+            {
+                Model.Series.Add(series);
+            }
+
             Model.Axes.Add(CategoryAxis);
             Model.Axes.Add(ValueAxis);
             rendered = true;
@@ -126,7 +86,7 @@ namespace ClosingReport
         }
     }
 
-    class LineChartView : IView
+    class LineChartView
     {
         private bool rendered = false;
 
@@ -166,73 +126,6 @@ namespace ClosingReport
             };
         }
 
-        // TODO: I'll be fixing this; temporary abstraction, I promise
-        private static OxyPlot.Series.LineSeries MakeInboundSeries()
-        {
-            return new OxyPlot.Series.LineSeries()
-            {
-                Title = "Inbound",
-                Color = OxyColors.SkyBlue,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 6,
-                MarkerStroke = OxyColors.White,
-                MarkerFill = OxyColors.SkyBlue,
-                MarkerStrokeThickness = 1.5
-            };
-        }
-
-        private static OxyPlot.Series.LineSeries MakeOutboundSeries()
-        {
-            return new OxyPlot.Series.LineSeries()
-            {
-                Title = "Outbound",
-                Color = OxyColors.LawnGreen,
-                MarkerType = MarkerType.Square,
-                MarkerSize = 6,
-                MarkerStroke = OxyColors.White,
-                MarkerFill = OxyColors.LawnGreen,
-                MarkerStrokeThickness = 1.5
-            };
-        }
-
-        private static OxyPlot.Series.LineSeries MakeAbandonedSeries()
-        {
-            return new OxyPlot.Series.LineSeries()
-            {
-                Title = "Abandoned",
-                Color = OxyColors.OrangeRed,
-                MarkerType = MarkerType.Cross,
-                MarkerSize = 6,
-                MarkerStroke = OxyColors.White,
-                MarkerFill = OxyColors.OrangeRed,
-                MarkerStrokeThickness = 1.5
-            };
-        }
-
-        public void AddViewable(TimeTracker tracker)
-        {
-            OxyPlot.Series.LineSeries series;
-            switch (tracker.Name)
-            {
-                case "Inbound":
-                    series = MakeInboundSeries();
-                    break;
-                case "Outbound":
-                    series = MakeOutboundSeries();
-                    break;
-                default:
-                    series = MakeAbandonedSeries();
-                    break;
-            }
-
-            foreach (var point in tracker.GetDataPoints())
-            {
-                series.Points.Add(point);
-            }
-
-            Series.Add(series);
-        }
-
         private void Render()
         {
             foreach (var series in Series)
@@ -263,7 +156,7 @@ namespace ClosingReport
     }
 
 
-    class HtmlView : IView
+    class HtmlView
     {
         private static string templatePath = @"View.template";
         private bool rendered = false;
@@ -290,7 +183,7 @@ namespace ClosingReport
         {
             Model = new
             {
-                Statistics = accounts.Statistics(),
+                //Statistics = accounts.Statistics(),
                 Totals = new
                 {
                     TotalReceived = accounts.TotalCount,

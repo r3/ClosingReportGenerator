@@ -47,68 +47,6 @@ namespace ClosingReport
             new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, @"C:\inbounds.csv").ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, @"C:\outbounds.csv").ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
-
-            //var accountsAdaptor = new ModelViewAdaptor<Accounts, IEnumerable<BarSeries>>(accounts, 
-
-            string barChartDestination = Path.Combine(desktop, @"barChart.png");
-            IView barChart = new BarChartView();
-            //barChart.AddAccounts(accounts);
-            barChart.SaveToFile(barChartDestination);
-
-            string lineChartDestination = Path.Combine(desktop, @"lineChart.png");
-            IView lineChart = new LineChartView();
-            //lineChart.AddAccounts(accounts);
-            lineChart.SaveToFile(lineChartDestination);
-
-            string htmlDestination = Path.Combine(desktop, @"view.html");
-            IView htmlView = new HtmlView();
-            //htmlView.AddAccounts(accounts);
-            htmlView.SaveToFile(htmlDestination);
-        }
-    }
-
-    interface IModelViewAdaptor<TModel, TSeries> where TSeries : IEnumerable<CategorizedSeries>
-    {
-        Func<TModel, IEnumerable<TSeries>> MakeSeries
-        {
-            get;
-            set;
-        }
-    }
-
-    class ModelViewAdaptor<TModel, TSeries> : IModelViewAdaptor<TModel, TSeries>, IEnumerable<TSeries>
-        where TSeries : IEnumerable<CategorizedSeries>
-    {
-        private TModel Model
-        {
-            get; set;
-        }
-
-        public Func<TModel, IEnumerable<TSeries>> MakeSeries
-        {
-            get;
-            set;
-        }
-
-        public ModelViewAdaptor(TModel model, Func<TModel, IEnumerable<TSeries>> seriesConstructor)
-        {
-            Model = model;
-            MakeSeries = seriesConstructor;
-        }
-
-        public IEnumerator<TSeries> GetEnumerator()
-        {
-            foreach (var series in MakeSeries(Model))
-            {
-                yield return series;
-            }
-
-            yield break;
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
         }
     }
 
