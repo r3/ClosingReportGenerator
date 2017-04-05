@@ -80,25 +80,11 @@ namespace ClosingReport
         }
     }
 
-    class TimeTrackerLineChartAdapter : ModelChartAdapter<TimeTracker, LineSeries>
+    class TimeTrackerLineChartAdapter : ModelChartAdapter<IEnumerable<TimeTracker>, LineSeries>
     {
-        protected new IEnumerable<TimeTracker> Model
-        {
-            get;
-            set;
-        }
-
-        public new Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> MakeSeries
-        {
-            get;
-            set;
-        }
-
         public TimeTrackerLineChartAdapter(IEnumerable<TimeTracker> model, Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> seriesConstructor)
-            : base(null, null)
+            : base(model, seriesConstructor)
         {
-            Model = model;
-            MakeSeries = seriesConstructor;
         }
 
         private static LineSeries MakeInboundSeries()
