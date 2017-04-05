@@ -9,7 +9,7 @@ using System.Linq;
 namespace ClosingReport
 {
     class ModelChartAdapter<TModel, TSeries> : IEnumerable<TSeries>
-        where TSeries : IEnumerable<Series>
+        where TSeries : Series
     {
         protected TModel Model
         {
@@ -45,7 +45,7 @@ namespace ClosingReport
         }
     }
 
-    class AccountsBarChartAdapter : ModelChartAdapter<Accounts, IEnumerable<BarSeries>>
+    class AccountsBarChartAdapter : ModelChartAdapter<Accounts, BarSeries>
     {
         public IEnumerable<string> Labels
         {
@@ -55,7 +55,7 @@ namespace ClosingReport
             }
         }
 
-        public AccountsBarChartAdapter(Accounts model, Func<Accounts, IEnumerable<IEnumerable<BarSeries>>> seriesConstructor)
+        public AccountsBarChartAdapter(Accounts model, Func<Accounts, IEnumerable<BarSeries>> seriesConstructor)
             : base(model, seriesConstructor)
         {
         }
@@ -80,11 +80,25 @@ namespace ClosingReport
         }
     }
 
-    class TimeTrackerLineChartAdapter : ModelChartAdapter<TimeTracker, IEnumerable<LineSeries>>
+    class TimeTrackerLineChartAdapter : ModelChartAdapter<TimeTracker, LineSeries>
     {
-        public TimeTrackerLineChartAdapter(TimeTracker model, Func<TimeTracker, IEnumerable<IEnumerable<LineSeries>>> seriesConstructor)
-            : base(model, seriesConstructor)
+        protected new IEnumerable<TimeTracker> Model
         {
+            get;
+            set;
+        }
+
+        public new Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> MakeSeries
+        {
+            get;
+            set;
+        }
+
+        public TimeTrackerLineChartAdapter(IEnumerable<TimeTracker> model, Func<IEnumerable<TimeTracker>, IEnumerable<LineSeries>> seriesConstructor)
+            : base(null, null)
+        {
+            Model = model;
+            MakeSeries = seriesConstructor;
         }
 
         private static LineSeries MakeInboundSeries()
@@ -142,7 +156,7 @@ namespace ClosingReport
                 }
         }
 
-        public static IEnumerable<LineSeries> SeriesCtor(TimeTracker[] trackers)
+        public static IEnumerable<LineSeries> SeriesCtor(IEnumerable<TimeTracker> trackers)
         {
             foreach (TimeTracker tracker in trackers)
             {

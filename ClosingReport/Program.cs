@@ -47,6 +47,9 @@ namespace ClosingReport
             new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, @"C:\inbounds.csv").ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, @"C:\outbounds.csv").ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
+
+            BarChartView foo = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
+            LineChartView bar = new LineChartView(new TimeTrackerLineChartAdapter(trackers, TimeTrackerLineChartAdapter.SeriesCtor));
         }
     }
 

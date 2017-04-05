@@ -47,6 +47,7 @@ namespace ClosingReport
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.BottomRight;
             CategoryAxis = new OxyPlot.Axes.CategoryAxis() { Position = AxisPosition.Left };
+            CategoryAxis.Labels.AddRange(adapter.Labels);
             ValueAxis = new OxyPlot.Axes.LinearAxis()
             {
                 Position = AxisPosition.Bottom,
@@ -90,12 +91,12 @@ namespace ClosingReport
     {
         private bool rendered = false;
 
-        private PlotModel Model
+        private TimeTrackerLineChartAdapter Adapter
         {
             get; set;
         }
 
-        private List<OxyPlot.Series.LineSeries> Series
+        private PlotModel Model
         {
             get; set;
         }
@@ -110,10 +111,10 @@ namespace ClosingReport
             get; set;
         }
 
-        public LineChartView()
+        public LineChartView(TimeTrackerLineChartAdapter adapter)
         {
+            Adapter = adapter;
             Model = new PlotModel() { Title = "Calls by Time" };
-            Series = new List<OxyPlot.Series.LineSeries>();
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.TopRight;
             FrequencyAxis = new OxyPlot.Axes.LinearAxis() { Position = AxisPosition.Left };
@@ -128,7 +129,7 @@ namespace ClosingReport
 
         private void Render()
         {
-            foreach (var series in Series)
+            foreach (OxyPlot.Series.LineSeries series in Adapter)
             {
                 Model.Series.Add(series);
             }
