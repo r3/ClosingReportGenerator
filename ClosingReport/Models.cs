@@ -34,6 +34,16 @@ namespace ClosingReport
         {
             get;
         }
+
+        TimeSpan TimeSpentPending
+        {
+            get;
+        }
+
+        TimeSpan Duration
+        {
+            get;
+        }
     }
 
     public class Communication : ICommunication
@@ -41,22 +51,32 @@ namespace ClosingReport
 
         public DateTime TimeOfReceipt
         {
-            get;
+            get; private set;
         }
 
         public object GroupId
         {
-            get;
+            get; private set;
         }
 
         public CommDirection Direction
         {
-            get;
+            get; private set;
         }
 
         public bool WasReceived
         {
-            get;
+            get; private set;
+        }
+
+        public TimeSpan TimeSpentPending
+        {
+            get; private set;
+        }
+
+        public TimeSpan Duration
+        {
+            get; private set;
         }
 
         public override string ToString()
@@ -64,12 +84,15 @@ namespace ClosingReport
             return $"Communication(TimeOfReceipt: {TimeOfReceipt}, GroupId: {GroupId}, Direction: {Direction}, WasReceived: {WasReceived})";
         }
 
-        public Communication(DateTime timeOfReceipt, object groupId, CommDirection direction, bool wasReceived)
+        public Communication(DateTime timeOfReceipt, object groupId, CommDirection direction, bool wasReceived, TimeSpan? timePendingResponse=null, TimeSpan? duration=null)
         {
             TimeOfReceipt = timeOfReceipt;
             GroupId = groupId;
             Direction = direction;
             WasReceived = wasReceived;
+
+            TimeSpentPending = (timePendingResponse.HasValue) ? timePendingResponse.Value : new TimeSpan(0);
+            Duration = (duration.HasValue) ? duration.Value : new TimeSpan(0);
         }
     }
 

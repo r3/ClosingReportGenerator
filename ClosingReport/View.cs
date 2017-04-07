@@ -180,6 +180,7 @@ namespace ClosingReport
             Engine.Razor = RazorEngineService.Create(config);
         }
 
+        /*
         public void AddAccounts(Accounts accounts)
         {
             Model = new
@@ -194,6 +195,7 @@ namespace ClosingReport
                 }
             };
         }
+        */
 
         private void Render()
         {

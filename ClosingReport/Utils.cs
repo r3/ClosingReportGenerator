@@ -169,8 +169,8 @@ namespace ClosingReport
 
     public class TimeTracker : IEnumerable<KeyValuePair<TimeSpan, int>>
     {
-        private Func<ICommunication, bool> isTrackable;
         private SortedDictionary<TimeSpan, int> counts = new SortedDictionary<TimeSpan, int>();
+        public Func<ICommunication, bool> IsTrackable;
 
         public int Count
         {
@@ -188,7 +188,7 @@ namespace ClosingReport
         public TimeTracker(string name, Func<ICommunication, bool> trackingCondition)
         {
             Name = name;
-            isTrackable = trackingCondition;
+            IsTrackable = trackingCondition;
         }
 
         public void AddTime(DateTime time)
@@ -206,7 +206,7 @@ namespace ClosingReport
 
         public bool TrackIfSupported(ICommunication comm)
         {
-            if (isTrackable(comm))
+            if (IsTrackable(comm))
             {
                 TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
                 counts[rounded]++;
@@ -245,7 +245,7 @@ namespace ClosingReport
 
                 TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
 
-                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, true);
+                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, true, ringDuration, callDuration);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
@@ -269,7 +269,7 @@ namespace ClosingReport
                 int accountCode = ReportRunner.sentinel;
                 int.TryParse(record[4], out accountCode);
 
-                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true);
+                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true, null, callDuration);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
@@ -289,7 +289,7 @@ namespace ClosingReport
                 int.TryParse(record[1], out accountCode);
 
                 TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
-                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false);
+                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false, callDuration);
                 ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }

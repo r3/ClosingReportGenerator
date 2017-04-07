@@ -80,12 +80,54 @@ namespace ClosingReport
             }
         }
 
+        public int AbandonedCount
+        {
+            get
+            {
+                return Model["Abandoned"].Count;
+            }
+        }
+
         public float AbandonedRate
         {
             get
             {
-                throw new NotImplementedException();
+                try
+                {
+                    return AbandonedCount / (float)TotalCount;
+                }
+                catch (DivideByZeroException)
+                {
+                    return 0;
+                }
             }
+        }
+
+        private static IEnumerable<ICommunication> InboundComms(Accounts accounts)
+        {
+            Func<ICommunication, bool> IsInbound = accounts["Inbound"].IsTrackable;
+            return from Account account in accounts
+                   from comm in account
+                   where IsInbound(comm)
+                   select comm;
+        }
+
+        private static IEnumerable<ICommunication> OutboundComms(Accounts accounts)
+        {
+            Func<ICommunication, bool> IsOutbound = accounts["Outbound"].IsTrackable;
+            return from Account account in accounts
+                   from comm in account
+                   where IsOutbound(comm)
+                   select comm;
+        }
+
+        private static IEnumerable<ICommunication> AbandonedComms(Accounts accounts)
+        {
+            Func<ICommunication, bool> IsAbandoned = accounts["Abandoned"].IsTrackable;
+            return from Account account in accounts
+                   from comm in account
+                   where IsAbandoned(comm)
+                   select comm;
         }
 
         public AccountsHtmlAdapter(Accounts model, Func<Accounts, IEnumerable<Stats>> seriesConstructor)
@@ -95,18 +137,16 @@ namespace ClosingReport
 
         public static IEnumerable<Stats> SeriesCtor(Accounts accounts)
         {
-            throw new NotImplementedException();
             foreach (Account account in accounts)
             {
                 yield return new Stats
                 {
-                    // TODO: Fix these;
                     AccountName = account.Name,
-                    InboundAverage = new TimeSpan(),
-                    AbandonedAverage = new TimeSpan(),
-                    TotalInbound = 0,
-                    TotalOutbound = 0,
-                    TotalAbandoned = 0 
+                    InboundAverage = TimeManagement.AverageTime(from comm in InboundComms(accounts) select comm.TimeSpentPending),
+                    AbandonedAverage = TimeManagement.AverageTime(from comm in AbandonedComms(accounts) select comm.Duration),
+                    TotalInbound = accounts["Inbound"].Count,
+                    TotalOutbound = accounts["Inbound"].Count,
+                    TotalAbandoned = accounts["Abandoned"].Count
                 };
             }
 
@@ -120,8 +160,7 @@ namespace ClosingReport
         {
             get
             {
-                return new List<string>() { "" };
-                //return Model.Select((x) => x.Name);
+                return from Account account in Model select account.Name;
             }
         }
 
@@ -138,11 +177,17 @@ namespace ClosingReport
 
             foreach (Account account in accounts)
             {
-                // TODO: FIX DIS
-                throw new NotImplementedException();
-                inbound.Items.Add(new BarItem() { Value = 0 });
-                outbound.Items.Add(new BarItem() { Value = 0 });
-                abandoned.Items.Add(new BarItem() { Value = 0 });
+                var IsInbound = accounts["Inbound"].IsTrackable;
+                var IsOutbound = accounts["Outbound"].IsTrackable;
+                var IsAbandoned = accounts["Inbound"].IsTrackable;
+
+                int inboundCount = (from comm in account where IsInbound(comm) select comm).Count();
+                int outboundCount = (from comm in account where IsOutbound(comm) select comm).Count();
+                int abandonedCount = (from comm in account where IsAbandoned(comm) select comm).Count();
+
+                inbound.Items.Add(new BarItem() { Value = inboundCount });
+                outbound.Items.Add(new BarItem() { Value = outboundCount });
+                abandoned.Items.Add(new BarItem() { Value = abandonedCount });
             }
 
             yield return inbound;
