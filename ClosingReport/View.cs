@@ -18,26 +18,22 @@ namespace ClosingReport
 
         private AccountsBarChartAdapter Adapter
         {
-            get;
-            set;
+            get; set;
         }
 
         private PlotModel Model
         {
-            get;
-            set;
+            get; set;
         }
 
         private OxyPlot.Axes.CategoryAxis CategoryAxis
         {
-            get;
-            set;
+            get; set;
         }
 
         private OxyPlot.Axes.LinearAxis ValueAxis
         {
-            get;
-            set;
+            get; set;
         }
 
         public BarChartView(AccountsBarChartAdapter adapter)
@@ -47,7 +43,7 @@ namespace ClosingReport
             Model.LegendPlacement = LegendPlacement.Outside;
             Model.LegendPosition = LegendPosition.BottomRight;
             CategoryAxis = new OxyPlot.Axes.CategoryAxis() { Position = AxisPosition.Left };
-            CategoryAxis.Labels.AddRange(adapter.Labels);
+            CategoryAxis.Labels.AddRange(Adapter.Labels);
             ValueAxis = new OxyPlot.Axes.LinearAxis()
             {
                 Position = AxisPosition.Bottom,
@@ -168,53 +164,61 @@ namespace ClosingReport
             private set;
         }
 
+        private AccountsHtmlAdapter Adapter
+        {
+            get; set;
+        }
+
         private object Model
         {
             get; set;
         }
 
-        public HtmlView()
+        private string Template
         {
+            get; set;
+        }
+
+        public HtmlView(AccountsHtmlAdapter adapter)
+        {
+            Adapter = adapter;
             var config = new TemplateServiceConfiguration();
             config.DisableTempFileLocking = false;
             Engine.Razor = RazorEngineService.Create(config);
+            Template = ReadTemplate();
         }
 
-        /*
-        public void AddAccounts(Accounts accounts)
-        {
-            Model = new
-            {
-                //Statistics = accounts.Statistics(),
-                Totals = new
-                {
-                    TotalReceived = accounts.TotalCount,
-                    Inbound = accounts.InboundCount,
-                    Outbound = accounts.OutboundCount,
-                    AbandonRate = accounts.AbandonedRate
-                }
-            };
-        }
-        */
-
-        private void Render()
+        private static string ReadTemplate()
         {
             if (!File.Exists(templatePath))
             {
                 throw new ArgumentException($"Could not open the template file at, '{templatePath}'");
             }
 
-            string template;
             using (StreamReader reader = new StreamReader(templatePath))
             {
-                template = reader.ReadToEnd();
+                return reader.ReadToEnd();
             }
+        }
+
+        private void Render()
+        {
 
             ResultString = Engine.Razor.RunCompile(
-                templateSource: template,
+                templateSource: Template,
                 name: "ClosingReportKey",
                 modelType: null,
-                model: Model
+                model: new
+                {
+                    Statistics = Adapter as IEnumerable<Stats>,
+                    Totals = new
+                    {
+                        TotalReceived = Adapter.TotalCount,
+                        Inbound = Adapter.InboundCount,
+                        Outbound = Adapter.OutboundCount,
+                        AbandonRate = Adapter.AbandonedRate
+                    }
+                }
             );
 
             rendered = true;

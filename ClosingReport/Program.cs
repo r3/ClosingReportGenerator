@@ -37,7 +37,7 @@ namespace ClosingReport
         {
             Dictionary<object, TimeTracker> trackers = new Dictionary<object, TimeTracker>()
             {
-                { "Inbound", new TimeTracker(name: "Inbound", trackingCondition: (x) => x.Direction == CommDirection.Inbound && x.WasReceived) },
+                { "Inbound", new TimeTracker(name: "Inbound", trackingCondition: (x) => x.Direction == CommDirection.Inbound && x.WasReceived == true) },
                 { "Outbound",  new TimeTracker(name: "Outbound", trackingCondition: (x) => x.Direction == CommDirection.Outbound) },
                 { "Abandoned", new TimeTracker(name: "Abandoned", trackingCondition: (x) => x.WasReceived == false) }
             };
@@ -48,8 +48,16 @@ namespace ClosingReport
             new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, @"C:\outbounds.csv").ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
 
-            BarChartView foo = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
-            LineChartView bar = new LineChartView(new TimeTrackersLineChartAdapter(trackers.Values, TimeTrackersLineChartAdapter.SeriesCtor));
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            BarChartView barChart = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
+            barChart.SaveToFile(Path.Combine(desktop, @"barChart.png"));
+
+            LineChartView lineChart = new LineChartView(new TimeTrackersLineChartAdapter(trackers.Values, TimeTrackersLineChartAdapter.SeriesCtor));
+            lineChart.SaveToFile(Path.Combine(desktop, @"lineChart.png"));
+
+            HtmlView htmlView = new HtmlView(new AccountsHtmlAdapter(accounts, AccountsHtmlAdapter.SeriesCtor));
+            htmlView.SaveToFile(Path.Combine(desktop, @"view.html"));
         }
     }
 

@@ -60,7 +60,7 @@ namespace ClosingReport
         {
             get
             {
-                return InboundCount + Model["Abandoned"].Count;
+                return InboundCount + Model.Trackers["Abandoned"].Count;
             }
         }
 
@@ -68,7 +68,7 @@ namespace ClosingReport
         {
             get
             {
-                return Model["Inbound"].Count;
+                return Model.Trackers["Inbound"].Count;
             }
         }
 
@@ -76,7 +76,7 @@ namespace ClosingReport
         {
             get
             {
-                return Model["Outbound"].Count;
+                return Model.Trackers["Outbound"].Count;
             }
         }
 
@@ -84,7 +84,7 @@ namespace ClosingReport
         {
             get
             {
-                return Model["Abandoned"].Count;
+                return Model.Trackers["Abandoned"].Count;
             }
         }
 
@@ -105,7 +105,7 @@ namespace ClosingReport
 
         private static IEnumerable<ICommunication> InboundComms(Accounts accounts)
         {
-            Func<ICommunication, bool> IsInbound = accounts["Inbound"].IsTrackable;
+            Func<ICommunication, bool> IsInbound = accounts.Trackers["Inbound"].IsTrackable;
             return from Account account in accounts
                    from comm in account
                    where IsInbound(comm)
@@ -114,7 +114,7 @@ namespace ClosingReport
 
         private static IEnumerable<ICommunication> OutboundComms(Accounts accounts)
         {
-            Func<ICommunication, bool> IsOutbound = accounts["Outbound"].IsTrackable;
+            Func<ICommunication, bool> IsOutbound = accounts.Trackers["Outbound"].IsTrackable;
             return from Account account in accounts
                    from comm in account
                    where IsOutbound(comm)
@@ -123,7 +123,7 @@ namespace ClosingReport
 
         private static IEnumerable<ICommunication> AbandonedComms(Accounts accounts)
         {
-            Func<ICommunication, bool> IsAbandoned = accounts["Abandoned"].IsTrackable;
+            Func<ICommunication, bool> IsAbandoned = accounts.Trackers["Abandoned"].IsTrackable;
             return from Account account in accounts
                    from comm in account
                    where IsAbandoned(comm)
@@ -137,6 +137,10 @@ namespace ClosingReport
 
         public static IEnumerable<Stats> SeriesCtor(Accounts accounts)
         {
+            var IsInbound = accounts.Trackers["Inbound"].IsTrackable;
+            var IsOutbound = accounts.Trackers["Outbound"].IsTrackable;
+            var IsAbandoned = accounts.Trackers["Abandoned"].IsTrackable;
+
             foreach (Account account in accounts)
             {
                 yield return new Stats
@@ -144,9 +148,9 @@ namespace ClosingReport
                     AccountName = account.Name,
                     InboundAverage = TimeManagement.AverageTime(from comm in InboundComms(accounts) select comm.TimeSpentPending),
                     AbandonedAverage = TimeManagement.AverageTime(from comm in AbandonedComms(accounts) select comm.Duration),
-                    TotalInbound = accounts["Inbound"].Count,
-                    TotalOutbound = accounts["Inbound"].Count,
-                    TotalAbandoned = accounts["Abandoned"].Count
+                    TotalInbound = account.Select(IsInbound).Count(),
+                    TotalOutbound = account.Select(IsOutbound).Count(),
+                    TotalAbandoned = account.Select(IsAbandoned).Count()
                 };
             }
 
@@ -177,9 +181,9 @@ namespace ClosingReport
 
             foreach (Account account in accounts)
             {
-                var IsInbound = accounts["Inbound"].IsTrackable;
-                var IsOutbound = accounts["Outbound"].IsTrackable;
-                var IsAbandoned = accounts["Inbound"].IsTrackable;
+                var IsInbound = accounts.Trackers["Inbound"].IsTrackable;
+                var IsOutbound = accounts.Trackers["Outbound"].IsTrackable;
+                var IsAbandoned = accounts.Trackers["Abandoned"].IsTrackable;
 
                 int inboundCount = (from comm in account where IsInbound(comm) select comm).Count();
                 int outboundCount = (from comm in account where IsOutbound(comm) select comm).Count();

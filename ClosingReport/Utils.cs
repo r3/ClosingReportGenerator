@@ -169,7 +169,7 @@ namespace ClosingReport
 
     public class TimeTracker : IEnumerable<KeyValuePair<TimeSpan, int>>
     {
-        private SortedDictionary<TimeSpan, int> counts = new SortedDictionary<TimeSpan, int>();
+        private SortedDictionary<TimeSpan, int> counts;
         public Func<ICommunication, bool> IsTrackable;
 
         public int Count
@@ -189,19 +189,16 @@ namespace ClosingReport
         {
             Name = name;
             IsTrackable = trackingCondition;
-        }
 
-        public void AddTime(DateTime time)
-        {
-            TimeSpan rounded = TimeManagement.NearestIncrement(time);
+            counts = new SortedDictionary<TimeSpan, int>();
+            TimeSpan timeIndex = TimeManagement.OpeningTime;
+            TimeSpan increment = TimeSpan.FromMinutes(TimeManagement.Increment);
 
-            if (rounded < TimeManagement.OpeningTime || rounded > TimeManagement.ClosingTime)
+            while (timeIndex <= TimeManagement.ClosingTime)
             {
-                throw new ArgumentException($"Encountered time outside of opening ({TimeManagement.OpeningTime}) and closing ({TimeManagement.ClosingTime}) time: {time}");
+                counts[timeIndex] = 0;
+                timeIndex += increment;
             }
-
-            counts[rounded]++;
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Added time, {time} to tracking as {rounded}. Count is now {counts[rounded]}.");
         }
 
         public bool TrackIfSupported(ICommunication comm)
@@ -209,10 +206,12 @@ namespace ClosingReport
             if (IsTrackable(comm))
             {
                 TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
+                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} supports communication, '{comm};' adding as {rounded}");
                 counts[rounded]++;
                 return true;
             }
 
+            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} does not support communication: {comm}");
             return false;
         }
 
