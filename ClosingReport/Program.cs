@@ -42,8 +42,8 @@ namespace ClosingReport
             };
 
             Accounts accounts = new Accounts(sentinel, trackers);
-            string root = ConfigurationManager.AppSettings["ResourcePath"];
 
+            string root = ConfigurationManager.AppSettings["ResourcePath"];
             new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, Path.Combine(root, @"inbounds.csv")).ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, Path.Combine(root, @"outbounds.csv")).ProcessCalls();
             new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, Path.Combine(root, @"abandons.csv")).ProcessCalls();
