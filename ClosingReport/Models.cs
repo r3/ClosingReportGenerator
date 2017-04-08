@@ -98,8 +98,8 @@ namespace ClosingReport
 
     public class Account : IEnumerable<ICommunication>
     {
-        private List<ICommunication> communications = new List<ICommunication>();
-        private List<TimeTracker> timeTrackers = new List<TimeTracker>();
+        private List<ICommunication> communications;
+        private List<TimeTracker> timeTrackers;
 
         public string Name
         {
@@ -115,6 +115,8 @@ namespace ClosingReport
         {
             Name = name;
             GroupIds = groupIds;
+            communications = new List<ICommunication>();
+            timeTrackers = new List<TimeTracker>();
         }
 
         public void AddCommunication(ICommunication comm)
@@ -161,7 +163,7 @@ namespace ClosingReport
     public class Accounts : IEnumerable<Account>
     {
         private int sentinel;
-        private Dictionary<object, Account> accounts = new Dictionary<object, Account>();
+        private Dictionary<object, Account> accounts;
 
         public Dictionary<object, TimeTracker> Trackers
         {
@@ -172,6 +174,7 @@ namespace ClosingReport
         {
             this.sentinel = sentinel;
             Trackers = trackers;
+            accounts = new Dictionary<object, Account>();
 
             var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
             foreach (AccountsElement elem in cfg.Accounts)
