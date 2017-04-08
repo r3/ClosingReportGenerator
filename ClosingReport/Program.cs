@@ -31,7 +31,6 @@ namespace ClosingReport
     {
         public static TraceSource log = new TraceSource("ClosingReport");
         public static int sentinel = Convert.ToInt32(ConfigurationManager.AppSettings["Sentinel"]);
-        private static string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         static void Main(string[] args)
         {
@@ -43,21 +42,27 @@ namespace ClosingReport
             };
 
             Accounts accounts = new Accounts(sentinel, trackers);
+            string root = ConfigurationManager.AppSettings["ResourcePath"];
 
-            new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, @"C:\inbounds.csv").ProcessCalls();
-            new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, @"C:\outbounds.csv").ProcessCalls();
-            new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, @"C:\abandons.csv").ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromInboundRecord, accounts.AddCommunication, Path.Combine(root, @"inbounds.csv")).ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromOutboundRecord, accounts.AddCommunication, Path.Combine(root, @"outbounds.csv")).ProcessCalls();
+            new CommunicationProcessor(CommunicationFactories.fromAbandonedRecord, accounts.AddCommunication, Path.Combine(root, @"abandons.csv")).ProcessCalls();
 
-            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string outputPath = ConfigurationManager.AppSettings["OutputPath"];
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            if (outputPath != "Desktop")
+            {
+                path = outputPath;
+            }
 
             BarChartView barChart = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
-            barChart.SaveToFile(Path.Combine(desktop, @"barChart.png"));
+            barChart.SaveToFile(Path.Combine(path, @"barChart.png"));
 
             LineChartView lineChart = new LineChartView(new TimeTrackersLineChartAdapter(trackers.Values, TimeTrackersLineChartAdapter.SeriesCtor));
-            lineChart.SaveToFile(Path.Combine(desktop, @"lineChart.png"));
+            lineChart.SaveToFile(Path.Combine(path, @"lineChart.png"));
 
             HtmlView htmlView = new HtmlView(new AccountsHtmlAdapter(accounts, AccountsHtmlAdapter.SeriesCtor));
-            htmlView.SaveToFile(Path.Combine(desktop, @"view.html"));
+            htmlView.SaveToFile(Path.Combine(path, @"view.html"));
         }
     }
 

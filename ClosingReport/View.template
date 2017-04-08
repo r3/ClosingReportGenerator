@@ -148,7 +148,7 @@
             Abandon Rate:
           </td>
           <td>
-            @Model.Totals.AbandonRate %
+            @Model.Totals.AbandonRate
           </td>
         </tr>
       </table>

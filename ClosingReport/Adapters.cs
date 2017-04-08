@@ -148,9 +148,9 @@ namespace ClosingReport
                     AccountName = account.Name,
                     InboundAverage = TimeManagement.AverageTime(from comm in InboundComms(accounts) select comm.TimeSpentPending),
                     AbandonedAverage = TimeManagement.AverageTime(from comm in AbandonedComms(accounts) select comm.Duration),
-                    TotalInbound = account.Select(IsInbound).Count(),
-                    TotalOutbound = account.Select(IsOutbound).Count(),
-                    TotalAbandoned = account.Select(IsAbandoned).Count()
+                    TotalInbound = (from x in account where IsInbound(x) select x).Count(),
+                    TotalOutbound = (from x in account where IsOutbound(x) select x).Count(),
+                    TotalAbandoned = (from x in account where IsAbandoned(x) select x).Count()
                 };
             }
 

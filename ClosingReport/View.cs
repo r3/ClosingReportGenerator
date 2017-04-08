@@ -216,7 +216,7 @@ namespace ClosingReport
                         TotalReceived = Adapter.TotalCount,
                         Inbound = Adapter.InboundCount,
                         Outbound = Adapter.OutboundCount,
-                        AbandonRate = Adapter.AbandonedRate
+                        AbandonRate = Adapter.AbandonedRate.ToString("P1")
                     }
                 }
             );
