@@ -134,7 +134,7 @@ namespace ClosingReport
                 }
                 catch (Exception e)
                 {
-                    ReportRunner.log.TraceEvent(TraceEventType.Error, 2, $"Encountered an error trying to add '{comm}' to tracker: {e.Message}");
+                    ClosingReport.log.TraceEvent(TraceEventType.Error, 2, $"Encountered an error trying to add '{comm}' to tracker: {e.Message}");
                 }
             }
 
@@ -176,10 +176,10 @@ namespace ClosingReport
             Trackers = trackers;
             accounts = new Dictionary<object, Account>();
 
-            var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
-            foreach (AccountsElement elem in cfg.Accounts)
+            var cfg = ConfigurationManager.GetSection("accounts") as ResourcesConfiguration;
+            foreach (ResourceElement elem in cfg.Accounts)
             {
-                var account = new Account(elem.AccountName, elem.AccountCodes);
+                var account = new Account(elem.ResourcePath, elem.AccountCodes);
                 account.RegisterTrackers(Trackers.Values);
 
                 foreach (var code in elem.AccountCodes)
@@ -187,12 +187,12 @@ namespace ClosingReport
                     if (!accounts.Keys.Contains(code))
                     {
                         accounts[code] = account;
-                        ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Adding account, '{account.Name}' with code, '{code}'");
+                        ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Adding account, '{account.Name}' with code, '{code}'");
                     }
                     else
                     {
                         string err = $"Could not add {account.Name} to accounts with code, {code}. Account code already used by {accounts[code].Name}";
-                        ReportRunner.log.TraceEvent(TraceEventType.Error, 1, err);
+                        ClosingReport.log.TraceEvent(TraceEventType.Error, 1, err);
                         throw new ArgumentException(err);
                     }
                 }
@@ -217,7 +217,7 @@ namespace ClosingReport
             }
             catch (Exception e)
             {
-                ReportRunner.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {comm}, got error: {e.Message}");
+                ClosingReport.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {comm}, got error: {e.Message}");
             }
         }
 

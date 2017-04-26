@@ -1,13 +1,31 @@
-﻿using OxyPlot;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 
 namespace ClosingReport
 {
+    [Serializable]
+    public class ParseException : Exception
+    {
+        public ParseException()
+        {
+        }
+
+        public ParseException(string message)
+            : base(message)
+        {
+        }
+
+        public ParseException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
+    }
+
     public static class TimeManagement
     {
         public const int HOURS_IN_DAY = 24;
@@ -130,7 +148,7 @@ namespace ClosingReport
             
             if (collectionCount == 0)
             {
-                ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to compute average, no TimeSpan objects in enumerable");
+                ClosingReport.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to compute average, no TimeSpan objects in enumerable");
                 return new TimeSpan(0);
             }
 
@@ -206,12 +224,12 @@ namespace ClosingReport
             if (IsTrackable(comm))
             {
                 TimeSpan rounded = TimeManagement.NearestIncrement(comm.TimeOfReceipt);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} supports communication, '{comm};' adding as {rounded}");
+                ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} supports communication, '{comm};' adding as {rounded}");
                 counts[rounded]++;
                 return true;
             }
 
-            ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} does not support communication: {comm}");
+            ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Tracker {Name} does not support communication: {comm}");
             return false;
         }
 
@@ -236,16 +254,16 @@ namespace ClosingReport
                 string telephoneNumber = row[1];
                 TimeSpan callDuration = TimeManagement.StampToSpan(row[2]);
 
-                int agentId = ReportRunner.sentinel;
+                int agentId = ClosingReport.sentinel;
                 int.TryParse(row[3], out agentId);
 
-                int accountCode = ReportRunner.sentinel;
+                int accountCode = ClosingReport.sentinel;
                 int.TryParse(row[4], out accountCode);
 
                 TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
 
                 Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, true, ringDuration, callDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
             catch (Exception e)
@@ -262,14 +280,14 @@ namespace ClosingReport
                 string telephoneNumber = record[1];
                 TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
 
-                int agentId = ReportRunner.sentinel;
+                int agentId = ClosingReport.sentinel;
                 int.TryParse(record[3], out agentId);
 
-                int accountCode = ReportRunner.sentinel;
+                int accountCode = ClosingReport.sentinel;
                 int.TryParse(record[4], out accountCode);
 
                 ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true, null, callDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
             catch (Exception e)
@@ -284,12 +302,12 @@ namespace ClosingReport
             {
                 DateTime firstRingTime = DateTime.Parse(record[0]);
 
-                int accountCode = ReportRunner.sentinel;
+                int accountCode = ClosingReport.sentinel;
                 int.TryParse(record[1], out accountCode);
 
                 TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
                 ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false, callDuration);
-                ReportRunner.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
+                ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
             catch (Exception e)
@@ -299,137 +317,58 @@ namespace ClosingReport
         }
     }
 
-    public class AccountsConfiguration : ConfigurationSection
+    class CommunicationProcessor
     {
-        private static ConfigurationPropertyCollection properties;
-        private static ConfigurationProperty propAccounts;
+        private Func<string[], ICommunication> builderMeth;
+        private Action<ICommunication> adderMeth;
+        private string csvPath;
+        private bool skipHeader;
 
-        static AccountsConfiguration()
+        public CommunicationProcessor(Func<string[], ICommunication> builderMeth, Action<ICommunication> adderMeth, string csvPath, bool? skipHeader=null)
         {
-            propAccounts = new ConfigurationProperty(null,
-                                                    typeof(AccountsElementCollection),
-                                                    null,
-                                                    ConfigurationPropertyOptions.IsDefaultCollection);
-            properties = new ConfigurationPropertyCollection { propAccounts };
-        }
+            this.builderMeth = builderMeth;
+            this.adderMeth = adderMeth;
+            this.csvPath = csvPath;
 
-        protected override ConfigurationPropertyCollection Properties
-        {
-            get
+            if (!skipHeader.HasValue)
             {
-                return properties;
+                this.skipHeader = (ConfigurationManager.AppSettings["SkipHeader"] == "true") ? true : false;
+            }
+            else
+            {
+                this.skipHeader = (bool)skipHeader;
             }
         }
 
-        public AccountsElementCollection Accounts
+        public void ProcessCalls()
         {
-            get
+            foreach (string[] record in IterRecords())
             {
-                return this[propAccounts] as AccountsElementCollection;
-            }
-        }
-    }
-
-    public class AccountsElementCollection : ConfigurationElementCollection
-    {
-        public AccountsElementCollection()
-        {
-            properties = new ConfigurationPropertyCollection();
-        }
-
-        private static ConfigurationPropertyCollection properties;
-
-        protected override ConfigurationPropertyCollection Properties
-        {
-            get
-            {
-                return properties;
+                ICommunication call = builderMeth(record);
+                adderMeth(call);
             }
         }
 
-        public override ConfigurationElementCollectionType CollectionType
+        private IEnumerable<string[]> IterRecords()
         {
-            get
+            if (!File.Exists(csvPath))
             {
-                return ConfigurationElementCollectionType.BasicMap;
+                throw new ArgumentException($"Could not open file at, '{csvPath}'");
             }
-        }
 
-        protected override string ElementName
-        {
-            get
+            using (var fs = File.OpenRead(csvPath))
+            using (var reader = new StreamReader(fs))
             {
-                return "account";
-            }
-        }
-
-        protected override ConfigurationElement CreateNewElement()
-        {
-            return new AccountsElement();
-        }
-
-        protected override object GetElementKey(ConfigurationElement element)
-        {
-            var elm = element as AccountsElement;
-            if (elm == null) throw new ArgumentNullException();
-            return elm.AccountName;
-        }
-    }
-
-    public class AccountsElement : ConfigurationElement
-    {
-        private static ConfigurationPropertyCollection properties;
-        private static ConfigurationProperty propAccount;
-        private static ConfigurationProperty propCodes;
-
-        protected override ConfigurationPropertyCollection Properties
-        {
-            get
-            {
-                return properties;
-            }
-        }
-
-        public AccountsElement()
-        {
-            propAccount = new ConfigurationProperty("name", typeof(string), null, ConfigurationPropertyOptions.IsKey);
-            propCodes = new ConfigurationProperty("codes", typeof(string), null, ConfigurationPropertyOptions.IsKey);
-            properties = new ConfigurationPropertyCollection { propAccount, propCodes };
-        }
-
-        public AccountsElement(string accountName)
-            : this()
-        {
-            AccountName = accountName;
-        }
-
-        public string AccountName
-        {
-            get
-            {
-                return this[propAccount] as string;
-            }
-            set
-            {
-                this[propAccount] = value;
-            }
-        }
-
-        public int[] AccountCodes
-        {
-            get
-            {
-                string codes = this[propCodes] as string;
-                try
+                reader.ReadLine();  // Skip header
+                while (!reader.EndOfStream)
                 {
-                    return codes.Split(',').Select(x => Convert.ToInt32(x)).ToArray();
-                }
-                catch (FormatException)
-                {
-                    ReportRunner.log.TraceEvent(TraceEventType.Warning, 1, $"Unable to parse codes from '{codes}', using: {ReportRunner.sentinel}");
-                    return new int[] { ReportRunner.sentinel };
+                    string line = reader.ReadLine();
+                    string[] splitted = line.Split(',');
+
+                    yield return splitted.Select(x => x.Trim('"')).ToArray();
                 }
             }
+            yield break;
         }
     }
 }

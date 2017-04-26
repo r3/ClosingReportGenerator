@@ -1,33 +1,13 @@
-﻿using OxyPlot.Series;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 
 namespace ClosingReport
 {
-    public class ParseException : Exception
-    {
-        public ParseException()
-        {
-        }
-
-        public ParseException(string message)
-            : base(message)
-        {
-        }
-
-        public ParseException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
-    }
-
-    class ReportRunner
+    class ClosingReport
     {
         public static TraceSource log = new TraceSource("ClosingReport");
         public static int sentinel = Convert.ToInt32(ConfigurationManager.AppSettings["Sentinel"]);
@@ -63,61 +43,6 @@ namespace ClosingReport
 
             HtmlView htmlView = new HtmlView(new AccountsHtmlAdapter(accounts, AccountsHtmlAdapter.SeriesCtor));
             htmlView.SaveToFile(Path.Combine(path, @"view.html"));
-        }
-    }
-
-    class CommunicationProcessor
-    {
-        private Func<string[], ICommunication> builderMeth;
-        private Action<ICommunication> adderMeth;
-        private string csvPath;
-        private bool skipHeader;
-
-        public CommunicationProcessor(Func<string[], ICommunication> builderMeth, Action<ICommunication> adderMeth, string csvPath, bool? skipHeader=null)
-        {
-            this.builderMeth = builderMeth;
-            this.adderMeth = adderMeth;
-            this.csvPath = csvPath;
-
-            if (!skipHeader.HasValue)
-            {
-                this.skipHeader = (ConfigurationManager.AppSettings["SkipHeader"] == "true") ? true : false;
-            }
-            else
-            {
-                this.skipHeader = (bool)skipHeader;
-            }
-        }
-
-        public void ProcessCalls()
-        {
-            foreach (string[] record in IterRecords())
-            {
-                ICommunication call = builderMeth(record);
-                adderMeth(call);
-            }
-        }
-
-        private IEnumerable<string[]> IterRecords()
-        {
-            if (!File.Exists(csvPath))
-            {
-                throw new ArgumentException($"Could not open file at, '{csvPath}'");
-            }
-
-            using (var fs = File.OpenRead(csvPath))
-            using (var reader = new StreamReader(fs))
-            {
-                reader.ReadLine();  // Skip header
-                while (!reader.EndOfStream)
-                {
-                    string line = reader.ReadLine();
-                    string[] splitted = line.Split(',');
-
-                    yield return splitted.Select(x => x.Trim('"')).ToArray();
-                }
-            }
-            yield break;
         }
     }
 }
