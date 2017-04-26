@@ -101,9 +101,9 @@ namespace ClosingReport
             {
                 unparsed = ConfigurationManager.AppSettings[name];
             }
-            catch (Exception)
+            catch (Exception e )
             {
-                throw new ArgumentException($"Unable to read value with key, '{name}' from the configuration file");
+                throw new ArgumentException($"Unable to read value with key, '{name}' from the configuration file with error: {e.Message}");
             }
 
             try

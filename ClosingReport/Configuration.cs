@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
@@ -147,9 +148,9 @@ namespace ClosingReport
         static ResourcesConfiguration()
         {
             propResources = new ConfigurationProperty(null,
-                                                    typeof(ResourcesElementCollection),
-                                                    null,
-                                                    ConfigurationPropertyOptions.IsDefaultCollection);
+                                                      typeof(ResourcesElementCollection),
+                                                      null,
+                                                      ConfigurationPropertyOptions.IsDefaultCollection);
             properties = new ConfigurationPropertyCollection { propResources };
         }
 
@@ -222,6 +223,7 @@ namespace ClosingReport
         private static ConfigurationProperty propPath;
         private static ConfigurationProperty propDirection;
         private static ConfigurationProperty propReceived;
+        private static List<string> inboundIndicators = new List<string>() { "in", "inbound" };
 
         protected override ConfigurationPropertyCollection Properties
         {
@@ -235,16 +237,14 @@ namespace ClosingReport
         {
             propPath = new ConfigurationProperty("path", typeof(string), null, ConfigurationPropertyOptions.IsKey);
             propDirection = new ConfigurationProperty("direction", typeof(string), null, ConfigurationPropertyOptions.IsKey);
-            propDirection = new ConfigurationProperty("received", typeof(string), null, ConfigurationPropertyOptions.IsKey);
+            propReceived = new ConfigurationProperty("received", typeof(string), null, ConfigurationPropertyOptions.IsKey);
             properties = new ConfigurationPropertyCollection { propPath, propDirection, propReceived };
         }
 
-        public ResourceElement(string resourcePath, string resourceDirection ,string resourceReceived)
+        public ResourceElement(string resourcePath)
             : this()
         {
             ResourcePath = resourcePath;
-            ResourceDirection = resourceDirection;
-            ResourceReceived = resourceReceived;
         }
 
         public string ResourcePath
@@ -259,11 +259,16 @@ namespace ClosingReport
             }
         }
 
-        public string ResourceDirection
+        public CommDirection ResourceDirection
         {
             get
             {
-                return this[propDirection] as string;
+                if (ResourceElement.inboundIndicators.Contains<string>(this[propDirection] as string))
+                {
+                    return CommDirection.Inbound;
+                }
+
+                return CommDirection.Outbound;
             }
             set
             {
@@ -271,11 +276,17 @@ namespace ClosingReport
             }
         }
 
-        public string ResourceReceived
+        public bool ResourceReceived
         {
             get
             {
-                return this[propReceived] as string;
+                bool result;
+                if (bool.TryParse(this[propReceived] as string, out result))
+                {
+                    return result;
+                }
+
+                return false;
             }
             set
             {

@@ -176,10 +176,10 @@ namespace ClosingReport
             Trackers = trackers;
             accounts = new Dictionary<object, Account>();
 
-            var cfg = ConfigurationManager.GetSection("accounts") as ResourcesConfiguration;
-            foreach (ResourceElement elem in cfg.Accounts)
+            var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
+            foreach (AccountsElement elem in cfg.Accounts)
             {
-                var account = new Account(elem.ResourcePath, elem.AccountCodes);
+                var account = new Account(elem.AccountName, elem.AccountCodes);
                 account.RegisterTrackers(Trackers.Values);
 
                 foreach (var code in elem.AccountCodes)
