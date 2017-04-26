@@ -324,32 +324,14 @@ namespace ClosingReport
         private string csvPath;
         private bool skipHeader;
 
-        public CommunicationProcessor(Func<string[], ICommunication> builderMeth, Action<ICommunication> adderMeth, string csvPath, bool? skipHeader=null)
-        {
-            this.builderMeth = builderMeth;
-            this.adderMeth = adderMeth;
-            this.csvPath = csvPath;
+        private List<Action<ICommunication>> callbacks;
 
-            if (!skipHeader.HasValue)
-            {
-                this.skipHeader = (ConfigurationManager.AppSettings["SkipHeader"] == "true") ? true : false;
-            }
-            else
-            {
-                this.skipHeader = (bool)skipHeader;
-            }
+        public CommunicationProcessor()
+        {
+            callbacks = new List<Action<ICommunication>>();
         }
 
-        public void ProcessCalls()
-        {
-            foreach (string[] record in IterRecords())
-            {
-                ICommunication call = builderMeth(record);
-                adderMeth(call);
-            }
-        }
-
-        private IEnumerable<string[]> IterRecords()
+        private static IEnumerable<string[]> IterRecords(string csvPath)
         {
             if (!File.Exists(csvPath))
             {
@@ -369,6 +351,40 @@ namespace ClosingReport
                 }
             }
             yield break;
+        }
+
+        public void RegisterCallback(Action<ICommunication> callback)
+        {
+            callbacks.Add(callback);
+        }
+
+        public void ProcessResource(ResourceElement resource)
+        {
+            Func<string[], ICommunication> builderMeth;
+            if (resource.ResourceDirection == CommDirection.Inbound)
+            {
+                if (resource.ResourceReceived)
+                {
+                    builderMeth = CommunicationFactories.fromInboundRecord;
+                }
+                else
+                {
+                    builderMeth = CommunicationFactories.fromAbandonedRecord;
+                }
+            }
+            else
+            {
+                builderMeth = CommunicationFactories.fromOutboundRecord;
+            }
+
+            foreach (string[] record in IterRecords(resource.ResourcePath))
+            {
+                ICommunication call = builderMeth(record);
+                foreach (var callback in callbacks)
+                {
+                    callback(call);
+                }
+            }
         }
     }
 }
