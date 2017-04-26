@@ -2,6 +2,7 @@
 <configuration>
   <configSections>
     <section name="accounts" type="ClosingReport.AccountsConfiguration, ClosingReport" />
+    <section name="resources" type="ClosingReport.ResourcesConfiguration, ClosingReport" />
   </configSections>
   <system.diagnostics>
     <sources>
@@ -30,6 +31,11 @@
     <account name="Some Vendor" codes="1" />
     <account name="Another Client" codes="2" />
   </accounts>
+  <resources>
+    <resource path="\path\to\Inbound.csv" direction="inbound" received="true" />
+    <resource path="\path\to\Outbound.csv" direction="outbound" received="true" />
+    <resource path="\path\to\Abandoned.csv" direction="inbound" received="false" />
+  </resources>
   <appSettings>
     <!-- No account code should match a sentinel value, used where no account code exists -->
     <add key="Sentinel" value="-1"/>
