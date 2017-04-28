@@ -246,6 +246,27 @@ namespace ClosingReport
 
     public static class CommunicationFactories
     {
+        public static Func<string[], ICommunication> ResourceAppropriateFactory(ResourceElement resource)
+        {
+            if (resource.ResourceDirection == CommDirection.Inbound)
+            {
+                if (resource.ResourceReceived)
+                {
+                    return CommunicationFactories.fromInboundRecord;
+                }
+                else
+                {
+                    return CommunicationFactories.fromAbandonedRecord;
+                }
+            }
+            else
+            {
+                return CommunicationFactories.fromOutboundRecord;
+            }
+
+        }
+
+        // TODO: Make private
         public static ICommunication fromInboundRecord(string[] row)
         {
             try
@@ -319,11 +340,6 @@ namespace ClosingReport
 
     class CommunicationProcessor
     {
-        private Func<string[], ICommunication> builderMeth;
-        private Action<ICommunication> adderMeth;
-        private string csvPath;
-        private bool skipHeader;
-
         private List<Action<ICommunication>> callbacks;
 
         public CommunicationProcessor()
@@ -331,7 +347,7 @@ namespace ClosingReport
             callbacks = new List<Action<ICommunication>>();
         }
 
-        private static IEnumerable<string[]> IterRecords(string csvPath)
+        private IEnumerable<string[]> IterRecords(string csvPath)
         {
             if (!File.Exists(csvPath))
             {
@@ -360,26 +376,11 @@ namespace ClosingReport
 
         public void ProcessResource(ResourceElement resource)
         {
-            Func<string[], ICommunication> builderMeth;
-            if (resource.ResourceDirection == CommDirection.Inbound)
-            {
-                if (resource.ResourceReceived)
-                {
-                    builderMeth = CommunicationFactories.fromInboundRecord;
-                }
-                else
-                {
-                    builderMeth = CommunicationFactories.fromAbandonedRecord;
-                }
-            }
-            else
-            {
-                builderMeth = CommunicationFactories.fromOutboundRecord;
-            }
+            Func<string[], ICommunication> factory = CommunicationFactories.ResourceAppropriateFactory(resource);
 
             foreach (string[] record in IterRecords(resource.ResourcePath))
             {
-                ICommunication call = builderMeth(record);
+                ICommunication call = factory(record);
                 foreach (var callback in callbacks)
                 {
                     callback(call);

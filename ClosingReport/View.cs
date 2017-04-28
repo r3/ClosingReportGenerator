@@ -9,6 +9,11 @@ using OxyPlot.Axes;
 using OxyPlot.Series;
 using System.Threading;
 using RazorEngine.Configuration;
+using System.Net.Mail;
+using System.Net.Mime;
+using System.Configuration;
+using System.Xml;
+using HtmlAgilityPack;
 
 namespace ClosingReport
 {
@@ -152,13 +157,12 @@ namespace ClosingReport
         }
     }
 
-
     class HtmlView
     {
         private static string templatePath = @"View.template";
         private bool rendered = false;
 
-        public string ResultString
+        public string AsCode
         {
             get;
             private set;
@@ -204,7 +208,7 @@ namespace ClosingReport
         private void Render()
         {
 
-            ResultString = Engine.Razor.RunCompile(
+            AsCode = Engine.Razor.RunCompile(
                 templateSource: Template,
                 name: "ClosingReportKey",
                 modelType: null,
@@ -233,8 +237,75 @@ namespace ClosingReport
 
             using (StreamWriter writer = new StreamWriter(path))
             {
-                writer.Write(ResultString);
+                writer.Write(AsCode);
             }
+        }
+    }
+
+    class ViewMailer
+    {
+        private MailMessage message;
+        private HtmlDocument document;
+        private List<LinkedResource> linkedResources;
+
+        public string AsCode
+        {
+            get
+            {
+                return document.DocumentNode.OuterHtml;
+            }
+        }
+
+        public ViewMailer(string html)
+        {
+            document = new HtmlDocument();
+            document.LoadHtml(html);
+
+            linkedResources = new List<LinkedResource>();
+
+            message = new MailMessage();
+            message.IsBodyHtml = true;
+
+            message.From = new MailAddress(ConfigurationManager.AppSettings["FromEmailAddress"]);
+
+            string destinations = ConfigurationManager.AppSettings["DestinationAddresses"];
+            foreach (var destination in destinations.Split(','))
+            {
+                if (destination != "")
+                {
+                    message.To.Add(destination);
+                }
+            }
+
+            message.Subject = ConfigurationManager.AppSettings["EmailSubject"];
+        }
+
+        public void ImbedImageAtId(string nodeId, string imagePath)
+        {
+            LinkedResource resource = new LinkedResource(imagePath, MediaTypeNames.Image.Jpeg);
+            resource.ContentId = Guid.NewGuid().ToString();
+
+            HtmlNode node = document.GetElementbyId(nodeId);
+            if (node == null)
+            {
+                throw new ArgumentException($"Id, '{nodeId}' not found in documnet");
+            }
+            ClosingReport.log.TraceEvent(System.Diagnostics.TraceEventType.Critical, 131, $"Replacing XML: {node.OuterHtml}");
+            node.Attributes["src"].Value = $"cid:{resource.ContentId}";
+            ClosingReport.log.TraceEvent(System.Diagnostics.TraceEventType.Critical, 131, $"With InnerXML: {node.OuterHtml}");
+
+            linkedResources.Add(resource);
+        }
+        
+        public void SendMail(SmtpClient client)
+        {
+            AlternateView view = AlternateView.CreateAlternateViewFromString(document.ToCode(), null, MediaTypeNames.Text.Html);
+            foreach (var linked in linkedResources)
+            {
+                view.LinkedResources.Add(linked);
+            }
+            message.AlternateViews.Add(view);
+            client.Send(message);
         }
     }
 }

@@ -39,13 +39,21 @@ namespace ClosingReport
             }
 
             BarChartView barChart = new BarChartView(new AccountsBarChartAdapter(accounts, AccountsBarChartAdapter.SeriesCtor));
-            barChart.SaveToFile(Path.Combine(path, @"barChart.png"));
+            var barChartPath = Path.Combine(path, @"barChart.png");
+            barChart.SaveToFile(barChartPath);
 
             LineChartView lineChart = new LineChartView(new TimeTrackersLineChartAdapter(trackers.Values, TimeTrackersLineChartAdapter.SeriesCtor));
-            lineChart.SaveToFile(Path.Combine(path, @"lineChart.png"));
+            var lineChartPath = Path.Combine(path, @"lineChart.png");
+            lineChart.SaveToFile(lineChartPath);
 
             HtmlView htmlView = new HtmlView(new AccountsHtmlAdapter(accounts, AccountsHtmlAdapter.SeriesCtor));
             htmlView.SaveToFile(Path.Combine(path, @"view.html"));
+
+            ViewMailer mailer = new ViewMailer(htmlView.AsCode);
+            mailer.ImbedImageAtId("barChart", barChartPath);
+            mailer.ImbedImageAtId("lineChart", lineChartPath);
+            //mailer.SendMail(...);
+
         }
     }
 }

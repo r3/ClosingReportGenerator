@@ -152,9 +152,9 @@
           </td>
         </tr>
       </table>
-      <img class="hright" src="barChart.png"/>
+      <img id="barChart" class="hright" src="barChart.png"/>
     </div>
-	<hr>
+	<hr />
     <div>
       @foreach (var stats in Model.Statistics) {
 	  <table cellspacing='0'>
@@ -215,7 +215,7 @@
     </div>
     <hr />
     <center>
-      <img class="wide_image" src="lineChart.png" />
+      <img id="lineChart" class="wide_image" src="lineChart.png" />
     </center>
   </body>
 </html>
