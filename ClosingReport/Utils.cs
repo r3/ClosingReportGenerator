@@ -5,6 +5,8 @@ using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
 
 namespace ClosingReport
 {
@@ -23,6 +25,104 @@ namespace ClosingReport
         public ParseException(string message, Exception inner)
             : base(message, inner)
         {
+        }
+    }
+
+
+    public class MailClient
+    {
+        public SmtpClient Client
+        {
+            get; set;
+        }
+
+        private int? _port = null;
+        public int Port
+        {
+            get
+            {
+                if (_port.HasValue)
+                {
+                    return _port.Value;
+                }
+
+                string configuredPort = ConfigurationManager.AppSettings["SMTPPort"];
+                int parsedPort;
+                if (int.TryParse(configuredPort, out parsedPort))
+                {
+                    _port = parsedPort;
+                    return parsedPort;
+                }
+
+                throw new ParseException($"Failed to parse 'SMTPPort' as integer, got: {configuredPort}");
+            }
+            set
+            {
+                _port = value;
+            }
+        }
+
+        private NetworkCredential _creds = null;
+        public NetworkCredential Credentials
+        {
+            get
+            {
+                if (_creds == null)
+                {
+                    try
+                    {
+                        string username = ConfigurationManager.AppSettings["SMTPUser"];
+                        string password = ConfigurationManager.AppSettings["SMTPPassword"];
+                        _creds = new NetworkCredential(username, password);
+                    }
+                    catch (ConfigurationException)
+                    {
+                    }
+                }
+                return _creds;
+            }
+            set
+            {
+                _creds = value;
+            }
+        }
+
+        private string _host = null;
+        public string Host
+        {
+            get
+            {
+                if (_host == null)
+                {
+                    try
+                    {
+                        _host = ConfigurationManager.AppSettings["SMTPAddress"];
+                    }
+                    catch (ConfigurationException)
+                    {
+                    }
+                }
+                return _host;
+            }
+            set
+            {
+                _host = value;
+            }
+        }
+
+        public MailClient()
+        {
+            Client = new SmtpClient();
+            Client.Port = Port;
+            Client.Host = Host;
+            Client.EnableSsl = true;
+            Client.DeliveryMethod = SmtpDeliveryMethod.Network;
+            Client.Timeout = 1000000;
+            if (Credentials != null)
+            {
+                //Client.UseDefaultCredentials = false;
+                Client.Credentials = Credentials;
+            }
         }
     }
 
@@ -266,8 +366,7 @@ namespace ClosingReport
 
         }
 
-        // TODO: Make private
-        public static ICommunication fromInboundRecord(string[] row)
+        private static ICommunication fromInboundRecord(string[] row)
         {
             try
             {
@@ -293,7 +392,7 @@ namespace ClosingReport
             }
         }
 
-        public static ICommunication fromOutboundRecord(string[] record)
+        private static ICommunication fromOutboundRecord(string[] record)
         {
             try
             {
@@ -317,7 +416,7 @@ namespace ClosingReport
             }
         }
 
-        public static ICommunication fromAbandonedRecord(string[] record)
+        private static ICommunication fromAbandonedRecord(string[] record)
         {
             try
             {

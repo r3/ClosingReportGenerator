@@ -6,7 +6,6 @@ using RazorEngine.Templating;
 using OxyPlot;
 using OxyPlot.Wpf;
 using OxyPlot.Axes;
-using OxyPlot.Series;
 using System.Threading;
 using RazorEngine.Configuration;
 using System.Net.Mail;
@@ -265,13 +264,14 @@ namespace ClosingReport
 
             message = new MailMessage();
             message.IsBodyHtml = true;
-
+            message.Subject = $"{ConfigurationManager.AppSettings["Subject"]} - {DateTime.Now.ToString("MM/dd/yyyy")}";
             message.From = new MailAddress(ConfigurationManager.AppSettings["FromEmailAddress"]);
+            message.Sender = message.From;
 
             string destinations = ConfigurationManager.AppSettings["DestinationAddresses"];
             foreach (var destination in destinations.Split(','))
             {
-                if (destination != "")
+                if (destination.Trim() != "")
                 {
                     message.To.Add(destination);
                 }
@@ -288,18 +288,15 @@ namespace ClosingReport
             HtmlNode node = document.GetElementbyId(nodeId);
             if (node == null)
             {
-                throw new ArgumentException($"Id, '{nodeId}' not found in documnet");
+                throw new ArgumentException($"Id, '{nodeId}' not found in document");
             }
-            ClosingReport.log.TraceEvent(System.Diagnostics.TraceEventType.Critical, 131, $"Replacing XML: {node.OuterHtml}");
             node.Attributes["src"].Value = $"cid:{resource.ContentId}";
-            ClosingReport.log.TraceEvent(System.Diagnostics.TraceEventType.Critical, 131, $"With InnerXML: {node.OuterHtml}");
-
             linkedResources.Add(resource);
         }
         
         public void SendMail(SmtpClient client)
         {
-            AlternateView view = AlternateView.CreateAlternateViewFromString(document.ToCode(), null, MediaTypeNames.Text.Html);
+            AlternateView view = AlternateView.CreateAlternateViewFromString(AsCode, null, MediaTypeNames.Text.Html);
             foreach (var linked in linkedResources)
             {
                 view.LinkedResources.Add(linked);

@@ -52,8 +52,7 @@ namespace ClosingReport
             ViewMailer mailer = new ViewMailer(htmlView.AsCode);
             mailer.ImbedImageAtId("barChart", barChartPath);
             mailer.ImbedImageAtId("lineChart", lineChartPath);
-            //mailer.SendMail(...);
-
+            mailer.SendMail(new MailClient().Client);
         }
     }
 }
