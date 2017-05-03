@@ -213,7 +213,8 @@ namespace ClosingReport
                 modelType: null,
                 model: new
                 {
-                    Statistics = Adapter as IEnumerable<Stats>,
+                    Statistics = new List<Stats>(Adapter as IEnumerable<Stats>),
+                    RowMax = 3,
                     Totals = new
                     {
                         TotalReceived = Adapter.TotalCount,
