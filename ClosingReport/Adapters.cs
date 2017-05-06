@@ -103,33 +103,6 @@ namespace ClosingReport
             }
         }
 
-        private static IEnumerable<ICommunication> InboundComms(Accounts accounts)
-        {
-            Func<ICommunication, bool> IsInbound = accounts.Trackers["Inbound"].IsTrackable;
-            return from Account account in accounts
-                   from comm in account
-                   where IsInbound(comm)
-                   select comm;
-        }
-
-        private static IEnumerable<ICommunication> OutboundComms(Accounts accounts)
-        {
-            Func<ICommunication, bool> IsOutbound = accounts.Trackers["Outbound"].IsTrackable;
-            return from Account account in accounts
-                   from comm in account
-                   where IsOutbound(comm)
-                   select comm;
-        }
-
-        private static IEnumerable<ICommunication> AbandonedComms(Accounts accounts)
-        {
-            Func<ICommunication, bool> IsAbandoned = accounts.Trackers["Abandoned"].IsTrackable;
-            return from Account account in accounts
-                   from comm in account
-                   where IsAbandoned(comm)
-                   select comm;
-        }
-
         public AccountsHtmlAdapter(Accounts model, Func<Accounts, IEnumerable<Stats>> seriesConstructor)
             : base(model, seriesConstructor)
         {
@@ -143,14 +116,18 @@ namespace ClosingReport
 
             foreach (Account account in accounts)
             {
+                var abandons = new List<ICommunication>(from x in account where IsAbandoned(x) select x);
+                var inbounds = new List<ICommunication>(from x in account where IsInbound(x) select x);
+                var outbounds = new List<ICommunication>(from x in account where IsOutbound(x) select x);
+
                 yield return new Stats
                 {
                     AccountName = account.Name,
-                    InboundAverage = TimeManagement.AverageTime(from comm in InboundComms(accounts) select comm.TimeSpentPending),
-                    AbandonedAverage = TimeManagement.AverageTime(from comm in AbandonedComms(accounts) select comm.Duration),
-                    TotalInbound = (from x in account where IsInbound(x) select x).Count(),
-                    TotalOutbound = (from x in account where IsOutbound(x) select x).Count(),
-                    TotalAbandoned = (from x in account where IsAbandoned(x) select x).Count()
+                    InboundAverage = TimeManagement.AverageTime(from comm in inbounds select comm.TimeSpentPending),
+                    AbandonedAverage = TimeManagement.AverageTime(from comm in abandons select comm.Duration),
+                    TotalInbound = inbounds.Count,
+                    TotalOutbound = outbounds.Count,
+                    TotalAbandoned = abandons.Count
                 };
             }
 

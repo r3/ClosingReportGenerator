@@ -206,6 +206,8 @@ namespace ClosingReport
 
         private void Render()
         {
+            int maxPerRow = 3;
+            int.TryParse(ConfigurationManager.AppSettings["ViewMaxPerRow"], out maxPerRow);
 
             AsCode = Engine.Razor.RunCompile(
                 templateSource: Template,
@@ -213,8 +215,8 @@ namespace ClosingReport
                 modelType: null,
                 model: new
                 {
-                    Statistics = new List<Stats>(Adapter as IEnumerable<Stats>),
-                    RowMax = 3,
+                    Statistics = Adapter as IEnumerable<Stats>,
+                    RowMax = maxPerRow,
                     Totals = new
                     {
                         TotalReceived = Adapter.TotalCount,

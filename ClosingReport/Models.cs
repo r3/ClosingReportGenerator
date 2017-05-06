@@ -170,6 +170,14 @@ namespace ClosingReport
             get; private set;
         }
 
+        public IEnumerable<Account> UniqueAccounts
+        {
+            get
+            {
+                return new HashSet<Account>(accounts.Values);
+            }
+        }
+
         public Accounts(int sentinel, Dictionary<object, TimeTracker> trackers)
         {
             this.sentinel = sentinel;
@@ -201,6 +209,12 @@ namespace ClosingReport
 
         public void AddCommunication(ICommunication comm)
         {
+            if (!TimeManagement.IsOpenAt(comm.TimeOfReceipt))
+            {
+                ClosingReport.log.TraceEvent(TraceEventType.Warning, 0, $"Communication falls outside hours of operation: {comm}");
+                return;
+            }
+
             Account account;
             try
             {
@@ -223,12 +237,12 @@ namespace ClosingReport
 
         public IEnumerator<Account> GetEnumerator()
         {
-            return accounts.Values.GetEnumerator();
+            return new HashSet<Account>(accounts.Values).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return accounts.Values.GetEnumerator();
+            return new HashSet<Account>(accounts.Values).GetEnumerator();
         }
     }
 }

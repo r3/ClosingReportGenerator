@@ -120,7 +120,7 @@ namespace ClosingReport
             Client.Timeout = 1000000;
             if (Credentials != null)
             {
-                //Client.UseDefaultCredentials = false;
+                Client.UseDefaultCredentials = false;
                 Client.Credentials = Credentials;
             }
         }
@@ -283,6 +283,11 @@ namespace ClosingReport
 
             return new TimeSpan(hrs, mins, secs);
         }
+
+        public static bool IsOpenAt(DateTime time)
+        {
+            return time.TimeOfDay >= OpeningTime || time.TimeOfDay >= ClosingTime;
+        }
     }
 
     public class TimeTracker : IEnumerable<KeyValuePair<TimeSpan, int>>
@@ -382,7 +387,15 @@ namespace ClosingReport
 
                 TimeSpan ringDuration = TimeManagement.StampToSpan(row[5]);
 
-                Communication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, true, ringDuration, callDuration);
+                ICommunication comm = new Communication(
+                    timeOfReceipt: firstRingTime,
+                    groupId: accountCode,
+                    direction: CommDirection.Inbound,
+                    wasReceived: true,
+                    timePendingResponse: ringDuration,
+                    duration: callDuration
+                );
+
                 ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
@@ -406,7 +419,15 @@ namespace ClosingReport
                 int accountCode = ClosingReport.sentinel;
                 int.TryParse(record[4], out accountCode);
 
-                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Outbound, true, null, callDuration);
+                ICommunication comm = new Communication(
+                    timeOfReceipt: firstRingTime,
+                    groupId: accountCode,
+                    direction: CommDirection.Outbound,
+                    wasReceived: true,
+                    timePendingResponse: null,
+                    duration: callDuration
+                );
+
                 ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
@@ -426,7 +447,16 @@ namespace ClosingReport
                 int.TryParse(record[1], out accountCode);
 
                 TimeSpan callDuration = TimeManagement.StampToSpan(record[2]);
-                ICommunication comm = new Communication(firstRingTime, accountCode, CommDirection.Inbound, false, callDuration);
+
+                ICommunication comm = new Communication(
+                    timeOfReceipt: firstRingTime,
+                    groupId: accountCode,
+                    direction: CommDirection.Inbound,
+                    wasReceived: false,
+                    timePendingResponse: null,
+                    duration: callDuration
+                );
+
                 ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Parsed communication: {comm}");
                 return comm;
             }
