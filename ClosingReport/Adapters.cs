@@ -103,9 +103,23 @@ namespace ClosingReport
             }
         }
 
-        public AccountsHtmlAdapter(Accounts model, Func<Accounts, IEnumerable<Stats>> seriesConstructor)
+        private int UnrecognizedCode
+        {
+            get; set;
+        }
+
+        public List<ICommunication> Unrecognized
+        {
+            get
+            {
+                return new List<ICommunication>(from x in Model.GetAccount(UnrecognizedCode) select x);
+            }
+        }
+
+        public AccountsHtmlAdapter(Accounts model, Func<Accounts, IEnumerable<Stats>> seriesConstructor, int unrecognizedCode)
             : base(model, seriesConstructor)
         {
+            UnrecognizedCode = unrecognizedCode;
         }
 
         public static IEnumerable<Stats> SeriesCtor(Accounts accounts)

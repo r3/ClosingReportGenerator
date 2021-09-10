@@ -28,7 +28,6 @@ namespace ClosingReport
         }
     }
 
-
     public class MailClient
     {
         public SmtpClient Client
@@ -46,7 +45,7 @@ namespace ClosingReport
                     return _port.Value;
                 }
 
-                string configuredPort = ConfigurationManager.AppSettings["SMTPPort"];
+                string configuredPort = ClosingReport.config.AppSettings.Settings["SMTPPort"].Value;
                 int parsedPort;
                 if (int.TryParse(configuredPort, out parsedPort))
                 {
@@ -71,8 +70,8 @@ namespace ClosingReport
                 {
                     try
                     {
-                        string username = ConfigurationManager.AppSettings["SMTPUser"];
-                        string password = ConfigurationManager.AppSettings["SMTPPassword"];
+                        string username = ClosingReport.config.AppSettings.Settings["SMTPUser"].Value;
+                        string password = ClosingReport.config.AppSettings.Settings["SMTPPassword"].Value;
                         _creds = new NetworkCredential(username, password);
                     }
                     catch (ConfigurationException)
@@ -96,7 +95,7 @@ namespace ClosingReport
                 {
                     try
                     {
-                        _host = ConfigurationManager.AppSettings["SMTPAddress"];
+                        _host = ClosingReport.config.AppSettings.Settings["SMTPAddress"].Value;
                     }
                     catch (ConfigurationException)
                     {
@@ -112,6 +111,8 @@ namespace ClosingReport
 
         public MailClient()
         {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3 | SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+
             Client = new SmtpClient();
             Client.Port = Port;
             Client.Host = Host;
@@ -146,7 +147,7 @@ namespace ClosingReport
                     return (int)increment;
                 }
 
-                string unparsed = ConfigurationManager.AppSettings["TimeIncrement"];
+                string unparsed = ClosingReport.config.AppSettings.Settings["TimeIncrement"].Value;
                 int parsed;
 
                 try
@@ -199,7 +200,7 @@ namespace ClosingReport
             string unparsed;
             try
             {
-                unparsed = ConfigurationManager.AppSettings[name];
+                unparsed = ClosingReport.config.AppSettings.Settings[name].Value;
             }
             catch (Exception e )
             {

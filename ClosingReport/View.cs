@@ -12,6 +12,7 @@ using System.Net.Mail;
 using System.Net.Mime;
 using System.Configuration;
 using System.Xml;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 
 namespace ClosingReport
@@ -207,7 +208,7 @@ namespace ClosingReport
         private void Render()
         {
             int maxPerRow = 3;
-            int.TryParse(ConfigurationManager.AppSettings["ViewMaxPerRow"], out maxPerRow);
+            int.TryParse(ClosingReport.config.AppSettings.Settings["ViewMaxPerRow"].Value, out maxPerRow);
 
             AsCode = Engine.Razor.RunCompile(
                 templateSource: Template,
@@ -219,11 +220,12 @@ namespace ClosingReport
                     RowMax = maxPerRow,
                     Totals = new
                     {
-                        TotalReceived = Adapter.TotalCount,
+                        Abandoned = Adapter.AbandonedCount,
                         Inbound = Adapter.InboundCount,
                         Outbound = Adapter.OutboundCount,
                         AbandonRate = Adapter.AbandonedRate.ToString("P1")
-                    }
+                    },
+                    Unrecognized = Adapter.Unrecognized
                 }
             );
 
@@ -258,6 +260,42 @@ namespace ClosingReport
             }
         }
 
+        private string parsedSubject
+        {
+            get
+            {
+                string unparsed = ClosingReport.config.AppSettings.Settings["Subject"].Value;
+                string pattern = @"\{.*\}";
+                Match match = Regex.Match(unparsed, pattern);
+                
+                if (!match.Success)
+                {
+                    return unparsed;
+                }
+
+                string dateString;
+                switch (match.Value.ToLower())
+                {
+                    case "{day}":
+                        dateString = DateTime.Now.ToString("d");
+                        break;
+                    case "{month}":
+                        dateString = DateTime.Now.ToString("y");
+                        break;
+                    case "{lastmonth}":
+                        var today = DateTime.Today;
+                        var month = new DateTime(today.Year, today.Month, 1);
+                        dateString = month.AddMonths(-1).ToString("y");
+                        break;
+                    default:
+                        dateString = "";
+                        ClosingReport.log.TraceEvent(System.Diagnostics.TraceEventType.Error, 2, $"Unable to parse subject variable, '{match.Value}'");
+                        break;
+                }
+                return Regex.Replace(unparsed, pattern, dateString);
+            }
+        }
+        
         public ViewMailer(string html)
         {
             document = new HtmlDocument();
@@ -267,11 +305,11 @@ namespace ClosingReport
 
             message = new MailMessage();
             message.IsBodyHtml = true;
-            message.Subject = $"{ConfigurationManager.AppSettings["Subject"]} - {DateTime.Now.ToString("MM/dd/yyyy")}";
-            message.From = new MailAddress(ConfigurationManager.AppSettings["FromEmailAddress"]);
+            message.Subject = parsedSubject;
+            message.From = new MailAddress(ClosingReport.config.AppSettings.Settings["FromEmailAddress"].Value);
             message.Sender = message.From;
 
-            string destinations = ConfigurationManager.AppSettings["DestinationAddresses"];
+            string destinations = ClosingReport.config.AppSettings.Settings["DestinationAddresses"].Value;
             foreach (var destination in destinations.Split(','))
             {
                 if (destination.Trim() != "")
@@ -279,8 +317,6 @@ namespace ClosingReport
                     message.To.Add(destination);
                 }
             }
-
-            message.Subject = ConfigurationManager.AppSettings["EmailSubject"];
         }
 
         public void ImbedImageAtId(string nodeId, string imagePath)

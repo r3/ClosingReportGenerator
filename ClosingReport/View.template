@@ -28,10 +28,10 @@
                   </tr>
                   <tr>
                     <td style="border-bottom: 1px solid grey">
-                      Total Calls:
+                      Abandoned Calls:
                     </td>
                     <td style="border-bottom: 1px solid grey">
-                      @Model.Totals.TotalReceived
+                      @Model.Totals.Abandoned
                     </td>
                   </tr>
                   <tr>
@@ -145,5 +145,31 @@
       <img id="lineChart" src="lineChart.png" />
     </center>
 
+	<br /><hr /><br />
+
+	<center>
+		<table>
+		  <thead>
+			<tr>
+			  <th style="border-bottom: 1px solid grey;">
+				Unrecognized Calls
+			  </th>
+		  </thead>
+		  <tbody>
+
+			@{
+			  foreach (var comm in Model.Unrecognized)
+			  {
+				<tr>
+				  <td>
+					@comm.ToString()
+				  </td>
+				</tr>
+			  }
+			}
+
+		  </tbody>
+		</table>
+	</center>
   </body>
 </html>

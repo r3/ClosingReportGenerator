@@ -30,7 +30,7 @@ namespace ClosingReport
             get;
         }
 
-        object GroupId
+        Int32 GroupId
         {
             get;
         }
@@ -54,7 +54,7 @@ namespace ClosingReport
             get; private set;
         }
 
-        public object GroupId
+        public Int32 GroupId
         {
             get; private set;
         }
@@ -84,7 +84,7 @@ namespace ClosingReport
             return $"Communication(TimeOfReceipt: {TimeOfReceipt}, GroupId: {GroupId}, Direction: {Direction}, WasReceived: {WasReceived})";
         }
 
-        public Communication(DateTime timeOfReceipt, object groupId, CommDirection direction, bool wasReceived, TimeSpan? timePendingResponse=null, TimeSpan? duration=null)
+        public Communication(DateTime timeOfReceipt, int groupId, CommDirection direction, bool wasReceived, TimeSpan? timePendingResponse=null, TimeSpan? duration=null)
         {
             TimeOfReceipt = timeOfReceipt;
             GroupId = groupId;
@@ -98,7 +98,7 @@ namespace ClosingReport
 
     public class Account : IEnumerable<ICommunication>
     {
-        private List<ICommunication> communications;
+        internal List<ICommunication> communications;
         private List<TimeTracker> timeTrackers;
 
         public string Name
@@ -164,6 +164,7 @@ namespace ClosingReport
     {
         private int sentinel;
         private Dictionary<object, Account> accounts;
+        private List<int> filteredIds;
 
         public Dictionary<object, TimeTracker> Trackers
         {
@@ -178,13 +179,14 @@ namespace ClosingReport
             }
         }
 
-        public Accounts(int sentinel, Dictionary<object, TimeTracker> trackers)
+        public Accounts(int sentinel, Dictionary<object, TimeTracker> trackers, List<int> filterIds)
         {
             this.sentinel = sentinel;
             Trackers = trackers;
             accounts = new Dictionary<object, Account>();
+            filteredIds = filterIds;
 
-            var cfg = ConfigurationManager.GetSection("accounts") as AccountsConfiguration;
+            var cfg = ClosingReport.config.GetSection("accounts") as AccountsConfiguration;
             foreach (AccountsElement elem in cfg.Accounts)
             {
                 var account = new Account(elem.AccountName, elem.AccountCodes);
@@ -209,6 +211,12 @@ namespace ClosingReport
 
         public void AddCommunication(ICommunication comm)
         {
+            if (filteredIds.Contains(comm.GroupId))
+            {
+                ClosingReport.log.TraceEvent(TraceEventType.Information, 0, $"Ignoring communication with filtered ID: {comm}");
+                return;
+            }
+
             if (!TimeManagement.IsOpenAt(comm.TimeOfReceipt))
             {
                 ClosingReport.log.TraceEvent(TraceEventType.Warning, 0, $"Communication falls outside hours of operation: {comm}");
@@ -233,6 +241,11 @@ namespace ClosingReport
             {
                 ClosingReport.log.TraceEvent(TraceEventType.Error, 1, $"Unable to add call, {comm}, got error: {e.Message}");
             }
+        }
+
+        public Account GetAccount(int accountCode)
+        {
+            return accounts[accountCode];
         }
 
         public IEnumerator<Account> GetEnumerator()
